@@ -1,255 +1,256 @@
---[[======================================================
-  SCRIPT GUI TELEPORT + FLY (com tema Discord fixo)
-======================================================]]
+--[[ 
+Script atualizado com Fly (velocidade 3), TP e Busca originais, tema Discord fixo e GUI móvel no celular.
+--]]
 
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
 
 local Character
 local Humanoid
-local HumanoidRootPart
-local flyEnabled = false
-local flySpeed = 60
-
 local connections = {}
 
+-- Velocidade do Fly
+local FLY_SPEED = 3
+local flying = false
+local flyConn
+
+-- Configuração do tema fixo (Discord)
+local theme = {
+	FrameBG = Color3.fromRGB(54, 57, 63),
+	TextPrimary = Color3.fromRGB(255, 255, 255),
+	TextSecondary = Color3.fromRGB(180, 180, 180),
+	ButtonTP = Color3.fromRGB(88, 101, 242),
+	ButtonRefresh = Color3.fromRGB(67, 181, 129),
+	ButtonClose = Color3.fromRGB(237, 66, 69),
+	ButtonFlyOn = Color3.fromRGB(67, 181, 129),
+	ButtonFlyOff = Color3.fromRGB(237, 66, 69),
+	WarningBG_Wild = Color3.fromRGB(67, 181, 129),
+	WarningBG_Other = Color3.fromRGB(255, 69, 0),
+	CornerRadius = UDim.new(0, 8),
+	ButtonCorner = UDim.new(0, 6),
+	StrokeColor = Color3.fromRGB(40, 42, 46)
+}
+
+-- Atualiza Character no spawn
+local function setupCharacter(char)
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+end
+setupCharacter(Player.Character or Player.CharacterAdded:Wait())
+Player.CharacterAdded:Connect(setupCharacter)
+
+-- Função de conexão segura
 local function safeConnect(signal, func)
 	local conn = signal:Connect(func)
 	table.insert(connections, conn)
 	return conn
 end
 
-local function setupCharacter(char)
-	Character = char
-	Humanoid = char:WaitForChild("Humanoid")
-	HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
-end
-
-setupCharacter(Player.Character or Player.CharacterAdded:Wait())
-safeConnect(Player.CharacterAdded, setupCharacter)
-
---================= GUI =================--
-
-local GUI = Instance.new("ScreenGui")
-GUI.Name = "TeleportGUI"
-GUI.Parent = Player:WaitForChild("PlayerGui")
+-- GUI
+local GUI = Instance.new("ScreenGui", Player:WaitForChild("PlayerGui"))
 GUI.ResetOnSpawn = false
-GUI.Enabled = true
+GUI.Name = "TPFlyGui"
 
-local Frame = Instance.new("Frame")
+local Frame = Instance.new("Frame", GUI)
 Frame.Size = UDim2.new(0, 320, 0, 240)
 Frame.Position = UDim2.new(0.5, -160, 0.5, -120)
 Frame.AnchorPoint = Vector2.new(0.5, 0.5)
-Frame.BackgroundColor3 = Color3.fromRGB(54, 57, 63)
+Frame.BackgroundColor3 = theme.FrameBG
 Frame.BorderSizePixel = 0
-Frame.Parent = GUI
 
-local FrameCorner = Instance.new("UICorner")
-FrameCorner.CornerRadius = UDim.new(0, 8)
-FrameCorner.Parent = Frame
+local FrameCorner = Instance.new("UICorner", Frame)
+FrameCorner.CornerRadius = theme.CornerRadius
 
-local FrameStroke = Instance.new("UIStroke")
-FrameStroke.Color = Color3.fromRGB(40, 42, 46)
-FrameStroke.Thickness = 1
-FrameStroke.Parent = Frame
+local FrameStroke = Instance.new("UIStroke", Frame)
+FrameStroke.Color = theme.StrokeColor
 
-local TitleLabel = Instance.new("TextLabel")
-TitleLabel.Size = UDim2.new(1, -40, 0, 30)
-TitleLabel.Position = UDim2.new(0, 10, 0, 5)
-TitleLabel.Text = "TP Horse"
-TitleLabel.Font = Enum.Font.SourceSansSemibold
-TitleLabel.TextSize = 20
-TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-TitleLabel.BackgroundTransparency = 1
-TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.Parent = Frame
+local Title = Instance.new("TextLabel", Frame)
+Title.Text = "TP Horse"
+Title.Size = UDim2.new(1, -40, 0, 30)
+Title.Position = UDim2.new(0, 10, 0, 5)
+Title.Font = Enum.Font.SourceSansSemibold
+Title.TextSize = 20
+Title.TextColor3 = theme.TextPrimary
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
 
-local IslandLabel = Instance.new("TextLabel")
-IslandLabel.Size = UDim2.new(1, -40, 0, 20)
-IslandLabel.Position = UDim2.new(0, 10, 0, 35)
-IslandLabel.Text = "Ilha: Buscando..."
-IslandLabel.Font = Enum.Font.SourceSans
-IslandLabel.TextSize = 14
-IslandLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
-IslandLabel.BackgroundTransparency = 1
-IslandLabel.TextXAlignment = Enum.TextXAlignment.Left
-IslandLabel.Parent = Frame
+local Island = Instance.new("TextLabel", Frame)
+Island.Text = "Ilha: Buscando..."
+Island.Size = UDim2.new(1, -40, 0, 20)
+Island.Position = UDim2.new(0, 10, 0, 35)
+Island.Font = Enum.Font.SourceSans
+Island.TextSize = 14
+Island.TextColor3 = theme.TextSecondary
+Island.BackgroundTransparency = 1
+Island.TextXAlignment = Enum.TextXAlignment.Left
 
-local StatusLabel = Instance.new("TextLabel")
-StatusLabel.Size = UDim2.new(1, -20, 0.3, 0)
-StatusLabel.Position = UDim2.new(0, 10, 0.25, 0)
-StatusLabel.Font = Enum.Font.SourceSans
-StatusLabel.TextSize = 16
-StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusLabel.TextWrapped = true
-StatusLabel.BackgroundTransparency = 1
-StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
-StatusLabel.Parent = Frame
+local Status = Instance.new("TextLabel", Frame)
+Status.Size = UDim2.new(1, -20, 0.3, 0)
+Status.Position = UDim2.new(0, 10, 0.25, 0)
+Status.Font = Enum.Font.SourceSans
+Status.TextSize = 16
+Status.TextColor3 = theme.TextPrimary
+Status.BackgroundTransparency = 1
+Status.TextWrapped = true
+Status.TextYAlignment = Enum.TextYAlignment.Top
 
-local WarningLabel = Instance.new("TextLabel")
-WarningLabel.Size = UDim2.new(1, -20, 0, 30)
-WarningLabel.Position = UDim2.new(0, 10, 0.55, 0)
-WarningLabel.Text = ""
-WarningLabel.Font = Enum.Font.SourceSansSemibold
-WarningLabel.TextSize = 16
-WarningLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-WarningLabel.BackgroundColor3 = Color3.fromRGB(255, 69, 0)
-WarningLabel.Visible = false
-WarningLabel.Parent = Frame
-
-local WarningCorner = Instance.new("UICorner")
+local Warning = Instance.new("TextLabel", Frame)
+Warning.Size = UDim2.new(1, -20, 0, 30)
+Warning.Position = UDim2.new(0, 10, 0.55, 0)
+Warning.Font = Enum.Font.SourceSansSemibold
+Warning.TextSize = 16
+Warning.TextColor3 = Color3.new(1, 1, 1)
+Warning.BackgroundColor3 = theme.WarningBG_Other
+Warning.Visible = false
+local WarningCorner = Instance.new("UICorner", Warning)
 WarningCorner.CornerRadius = UDim.new(0, 5)
-WarningCorner.Parent = WarningLabel
+Warning.Parent = Frame
 
--- BOTÕES
-local TeleportButton = Instance.new("TextButton")
-TeleportButton.Size = UDim2.new(0, 93, 0, 40)
-TeleportButton.Position = UDim2.new(0, 10, 0.78, 0)
-TeleportButton.Text = "TP"
-TeleportButton.Font = Enum.Font.SourceSansSemibold
-TeleportButton.TextSize = 18
-TeleportButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-TeleportButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-TeleportButton.Parent = Frame
-
-local RefreshButton = Instance.new("TextButton")
-RefreshButton.Size = UDim2.new(0, 93, 0, 40)
-RefreshButton.Position = UDim2.new(0, 114, 0.78, 0)
-RefreshButton.Text = "Busca"
-RefreshButton.Font = Enum.Font.SourceSansSemibold
-RefreshButton.TextSize = 18
-RefreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-RefreshButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129)
-RefreshButton.Parent = Frame
-
-local FlyButton = Instance.new("TextButton")
-FlyButton.Size = UDim2.new(0, 93, 0, 40)
-FlyButton.Position = UDim2.new(1, -103, 0.78, 0)
-FlyButton.Text = "Fly"
-FlyButton.Font = Enum.Font.SourceSansSemibold
-FlyButton.TextSize = 18
-FlyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- vermelho desativado
-FlyButton.Parent = Frame
-
-local CloseButton = Instance.new("TextButton")
-CloseButton.Size = UDim2.new(0, 28, 0, 28)
-CloseButton.Position = UDim2.new(1, -35, 0, 6)
-CloseButton.Text = "X"
-CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.TextSize = 18
-CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
-CloseButton.Parent = Frame
-
--- CANTOS ARREDONDADOS
-for _, btn in ipairs({TeleportButton, RefreshButton, FlyButton, CloseButton}) do
-	local c = Instance.new("UICorner")
-	c.CornerRadius = UDim.new(0, 6)
-	c.Parent = btn
+-- Botões
+local function makeButton(text, posX, color)
+	local btn = Instance.new("TextButton", Frame)
+	btn.Size = UDim2.new(0, 93, 0, 40)
+	btn.Position = posX
+	btn.Font = Enum.Font.SourceSansSemibold
+	btn.TextSize = 18
+	btn.AutoButtonColor = false
+	btn.Text = text
+	btn.TextColor3 = Color3.new(1,1,1)
+	btn.BackgroundColor3 = color
+	local corner = Instance.new("UICorner", btn)
+	corner.CornerRadius = theme.ButtonCorner
+	return btn
 end
 
---================= FUNÇÕES ORIGINAIS =================--
--- Aqui você pode manter suas funções de teleport, refresh etc.
--- Elas continuam funcionando exatamente iguais
+local TP = makeButton("TP", UDim2.new(0,10,0.78,0), theme.ButtonTP)
+local Refresh = makeButton("Busca", UDim2.new(0,114,0.78,0), theme.ButtonRefresh)
+local FlyBtn = makeButton("Fly", UDim2.new(1,-103,0.78,0), theme.ButtonFlyOff)
+local Close = makeButton("X", UDim2.new(1,-35,0,6), theme.ButtonClose)
+Close.Size = UDim2.new(0,28,0,28)
+Close.TextSize = 18
 
--- EXEMPLO placeholder (você pode deixar as originais do seu script)
-local function teleportToNextModel() end
-local function refreshHorseList() end
-local function cleanup()
-	for _, conn in ipairs(connections) do
-		if conn.Connected then conn:Disconnect() end
+-- Variáveis de teleporte
+local validModels = {}
+local currentModelIndex = 1
+
+local function findValidModels()
+	local islandsFolder = workspace:FindFirstChild("Islands")
+	if not islandsFolder then return {}, "Erro: Islands Missing" end
+	for _, h in ipairs(workspace:GetDescendants()) do
+		if h:IsA("Highlight") and h.Name == "TeleportHighlight" then h:Destroy() end
 	end
-	GUI:Destroy()
-end
-
-safeConnect(CloseButton.MouseButton1Click, cleanup)
-safeConnect(TeleportButton.MouseButton1Click, teleportToNextModel)
-safeConnect(RefreshButton.MouseButton1Click, refreshHorseList)
-
---================= SISTEMA DE FLY =================--
-
-local bodyGyro, bodyVelocity
-
-local function enableFly()
-	if not Character or not HumanoidRootPart then return end
-	flyEnabled = true
-	FlyButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- verde ligado
-	Humanoid.PlatformStand = true
-
-	bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-	bodyGyro.P = 9e4
-	bodyGyro.CFrame = HumanoidRootPart.CFrame
-	bodyGyro.Parent = HumanoidRootPart
-
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-	bodyVelocity.Velocity = Vector3.zero
-	bodyVelocity.Parent = HumanoidRootPart
-
-	-- Loop de voo
-	safeConnect(RunService.Heartbeat, function()
-		if flyEnabled and Character and HumanoidRootPart then
-			bodyGyro.CFrame = Camera.CFrame
-			local moveDir = Vector3.zero
-			if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir += Camera.CFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir -= Camera.CFrame.LookVector end
-			if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir -= Camera.CFrame.RightVector end
-			if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir += Camera.CFrame.RightVector end
-			bodyVelocity.Velocity = moveDir * flySpeed
+	local playerIsland = Character and Character.Parent
+	local islandContainer
+	while playerIsland and playerIsland ~= islandsFolder do
+		if playerIsland.Parent == islandsFolder then
+			islandContainer = playerIsland
+			break
 		end
-	end)
-end
-
-local function disableFly()
-	flyEnabled = false
-	FlyButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- vermelho desligado
-	if bodyGyro then bodyGyro:Destroy() end
-	if bodyVelocity then bodyVelocity:Destroy() end
-	if Humanoid then Humanoid.PlatformStand = false end
-end
-
-safeConnect(FlyButton.MouseButton1Click, function()
-	if flyEnabled then
-		disableFly()
-	else
-		enableFly()
+		playerIsland = playerIsland.Parent
 	end
+	if not islandContainer then return {}, "Erro: Não na Ilha" end
+	local islandName = islandContainer.Name
+	local horses = {}
+	for _, d in ipairs(islandContainer:GetDescendants()) do
+		if d:IsA("Model") and d:FindFirstChildOfClass("Humanoid") and d:FindFirstChild("HumanoidRootPart") and d.Name:match("^%b{}$") then
+			local h = Instance.new("Highlight")
+			h.Name = "TeleportHighlight"
+			h.FillColor = theme.ButtonTP
+			h.Adornee = d
+			h.Parent = d
+			table.insert(horses, {Model=d,RootPart=d.HumanoidRootPart})
+		end
+	end
+	return horses, islandName
+end
+
+local function updateGUIStatus()
+	if #validModels == 0 then
+		Status.Text = "Nenhum cavalo encontrado com nome entre { }"
+		Warning.Visible = false
+		return
+	end
+	local info = validModels[currentModelIndex]
+	local pos = info.RootPart.Position
+	Status.Text = string.format("Cavalo %d de %d:\n%s\nPos: %.1f, %.1f, %.1f",currentModelIndex,#validModels,info.Model.Name,pos.X,pos.Y,pos.Z)
+end
+
+local function teleportNext()
+	if #validModels == 0 then return end
+	currentModelIndex += 1
+	if currentModelIndex > #validModels then currentModelIndex = 1 end
+	local t = validModels[currentModelIndex]
+	if Character then
+		Character:PivotTo(CFrame.new(t.RootPart.Position + Vector3.new(0,3,0)))
+		updateGUIStatus()
+	end
+end
+
+local function refreshList()
+	validModels, islandName = findValidModels()
+	currentModelIndex = 1
+	Island.Text = "Ilha: " .. (islandName or "Desconhecida")
+	updateGUIStatus()
+end
+
+-- Função de Fly
+local function toggleFly()
+	flying = not flying
+	FlyBtn.BackgroundColor3 = flying and theme.ButtonFlyOn or theme.ButtonFlyOff
+	if flying then
+		if Humanoid then
+			Humanoid.PlatformStand = true
+		end
+		Player.DevEnableMouseLock = true
+		local cam = workspace.CurrentCamera
+		flyConn = RunService.Heartbeat:Connect(function()
+			if not flying or not Character then return end
+			local dir = Vector3.new(0,0,0)
+			if UIS:IsKeyDown(Enum.KeyCode.W) then dir += cam.CFrame.LookVector end
+			if UIS:IsKeyDown(Enum.KeyCode.S) then dir -= cam.CFrame.LookVector end
+			if UIS:IsKeyDown(Enum.KeyCode.A) then dir -= cam.CFrame.RightVector end
+			if UIS:IsKeyDown(Enum.KeyCode.D) then dir += cam.CFrame.RightVector end
+			if UIS:IsKeyDown(Enum.KeyCode.Space) then dir += Vector3.new(0,1,0) end
+			if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then dir -= Vector3.new(0,1,0) end
+			if dir.Magnitude > 0 then
+				Character:TranslateBy(dir.Unit * FLY_SPEED * RunService.Heartbeat:Wait())
+			end
+		end)
+	else
+		if flyConn then flyConn:Disconnect() end
+		if Humanoid then Humanoid.PlatformStand = false end
+	end
+end
+
+-- Conectar botões
+TP.MouseButton1Click:Connect(teleportNext)
+Refresh.MouseButton1Click:Connect(refreshList)
+FlyBtn.MouseButton1Click:Connect(toggleFly)
+Close.MouseButton1Click:Connect(function()
+	for _, c in pairs(connections) do if c.Connected then c:Disconnect() end end
+	GUI:Destroy()
 end)
 
---================= MOVER GUI (TOQUE E PC) =================--
-
-local dragging = false
-local dragInput, dragStart, startPos
-
-safeConnect(Frame.InputBegan, function(input)
+-- Arrastar GUI (funciona no PC e celular)
+local dragging, dragInput, startPos, startInputPos
+Frame.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		dragging = true
-		dragStart = input.Position
+		startInputPos = input.Position
 		startPos = Frame.Position
-
-		safeConnect(input.Changed, function()
-			if input.UserInputState == Enum.UserInputState.End then
-				dragging = false
-			end
+		input.Changed:Connect(function()
+			if input.UserInputState == Enum.UserInputState.End then dragging = false end
 		end)
 	end
 end)
-
-safeConnect(UIS.InputChanged, function(input)
-	if input == dragInput then
-		local delta = input.Position - dragStart
+UIS.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - startInputPos
 		Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 	end
 end)
 
-safeConnect(Frame.InputChanged, function(input)
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-	end
-end)
-
-print("GUI Teleport + Fly carregada com sucesso!")
+-- Inicializa
+refreshList()
+GUI.Enabled = true
