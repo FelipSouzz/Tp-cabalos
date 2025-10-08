@@ -394,13 +394,6 @@ safeConnect(RunService.Heartbeat, function(dt)
 
 	local targetVel = Vector3.new(horizVel.X, vertVel, horizVel.Z)
 	if flyBodyVelocity then
-		-- suaviza o movimento para não travar
-		flyBodyVelocity.Velocity = flyBodyVelocity.Velocity:Lerp(targetVel, math.clamp(5*dt, 0, 1))
-	end
-
-	if flyBodyGyro then
-		flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
-	end
 end)
 
 -- === Drag GUI ===
