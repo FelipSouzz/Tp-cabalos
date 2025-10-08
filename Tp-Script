@@ -317,7 +317,7 @@ safeConnect(CloseButton.MouseButton1Click,cleanup)
 
 -- === Novo Fly System ===
 local flyEnabled = false
-local flySpeed = 50
+local flySpeed = 500
 local flyBodyVelocity
 local flyBodyGyro
 local oldHumanoidWalkSpeed, oldHumanoidAutoRotate
