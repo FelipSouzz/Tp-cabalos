@@ -317,8 +317,7 @@ safeConnect(CloseButton.MouseButton1Click,cleanup)
 
 -- === Novo Fly System ===
 local flyEnabled = false
-local flyEnabled = false
-local flySpeed = 2
+local flySpeed = 300
 local flyBodyVelocity
 local flyBodyGyro
 
@@ -331,27 +330,21 @@ local function createFlyParts()
 	if flyBodyGyro then flyBodyGyro:Destroy() end
 
 	flyBodyVelocity = Instance.new("BodyVelocity")
-	flyBodyVelocity.MaxForce = Vector3.new(1e7, 1e7, 1e7)
+	flyBodyVelocity.MaxForce = Vector3.new(1e4, 1e4, 1e4) -- menor força para respeitar flySpeed
 	flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-	flyBodyVelocity.P = 1250
+	flyBodyVelocity.P = 500
 	flyBodyVelocity.Parent = hrp
 
 	flyBodyGyro = Instance.new("BodyGyro")
-	flyBodyGyro.MaxTorque = Vector3.new(1e7, 1e7, 1e7)
-	flyBodyGyro.P = 3000
+	flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	flyBodyGyro.P = 1000
 	flyBodyGyro.CFrame = hrp.CFrame
 	flyBodyGyro.Parent = hrp
 end
 
 local function destroyFlyParts()
-	if flyBodyVelocity then
-		pcall(function() flyBodyVelocity:Destroy() end)
-		flyBodyVelocity = nil
-	end
-	if flyBodyGyro then
-		pcall(function() flyBodyGyro:Destroy() end)
-		flyBodyGyro = nil
-	end
+	if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity = nil end
+	if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro = nil end
 end
 
 local function toggleFly()
@@ -368,54 +361,46 @@ end
 
 safeConnect(FlyButton.Activated, toggleFly)
 
-local function getHorizontalInput(cam)
-	if Humanoid and Humanoid.MoveDirection and Humanoid.MoveDirection.Magnitude > 0 then
-		local md = Humanoid.MoveDirection
-		return Vector3.new(md.X, 0, md.Z)
-	end
-	if not cam then return Vector3.new() end
-	local forward = Vector3.new(cam.LookVector.X, 0, cam.LookVector.Z)
-	local right = Vector3.new(cam.RightVector.X, 0, cam.RightVector.Z)
+local function getInputDir(cam)
 	local dir = Vector3.new()
-	if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + forward end
-	if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - forward end
-	if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - right end
-	if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + right end
-	return dir
+	if UIS:IsKeyDown(Enum.KeyCode.W) then dir = dir + Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z) end
+	if UIS:IsKeyDown(Enum.KeyCode.S) then dir = dir - Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z) end
+	if UIS:IsKeyDown(Enum.KeyCode.A) then dir = dir - Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z) end
+	if UIS:IsKeyDown(Enum.KeyCode.D) then dir = dir + Vector3.new(cam.CFrame.RightVector.X, 0, cam.CFrame.RightVector.Z) end
+	return dir.Unit
 end
 
-safeConnect(RunService.Heartbeat, function()
+safeConnect(RunService.Heartbeat, function(dt)
 	if not flyEnabled then return end
 	if not Character or not Character.Parent then
 		flyEnabled = false
 		destroyFlyParts()
 		return
 	end
+
 	local hrp = Character:FindFirstChild("HumanoidRootPart")
 	local cam = workspace.CurrentCamera
 	if not hrp or not cam then return end
 
-	local inputDir = getHorizontalInput(cam)
-	local horizVel = Vector3.new(0, 0, 0)
-	if inputDir.Magnitude > 0 then
-		horizVel = inputDir.Unit * flySpeed
-	end
+	local horizDir = getInputDir(cam)
+	local horizVel = horizDir * flySpeed
 
-	local vert = 0
+	local vertVel = 0
 	if UIS:IsKeyDown(Enum.KeyCode.Space) then
-		vert = flySpeed
+		vertVel = flySpeed
 	elseif UIS:IsKeyDown(Enum.KeyCode.LeftControl) then
-		vert = -flySpeed
-else
-		local forwardMag = math.clamp(inputDir.Magnitude, 0, 1)
-		vert = cam.CFrame.LookVector.Y * forwardMag * flySpeed
+		vertVel = -flySpeed
 	end
 
-	local target = Vector3.new(horizVel.X, vert, horizVel.Z)
-	if target ~= target then target = Vector3.new(0,0,0) end
+	local targetVel = Vector3.new(horizVel.X, vertVel, horizVel.Z)
+	if flyBodyVelocity then
+		-- suaviza o movimento para não travar
+		flyBodyVelocity.Velocity = flyBodyVelocity.Velocity:Lerp(targetVel, math.clamp(5*dt, 0, 1))
+	end
 
-	if flyBodyVelocity then flyBodyVelocity.Velocity = target end
-	if flyBodyGyro then flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector) end
+	if flyBodyGyro then
+		flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.CFrame.LookVector)
+	end
 end)
 
 -- === Drag GUI ===
