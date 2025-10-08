@@ -1,15 +1,15 @@
--- Serviços
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
--- Variáveis de Character
 local Character
 local Humanoid
-local connections = {}
+local connections = {} -- para guardar todos os Connects
 
--- Tema fixo: Discord
+-- Armazena o tema atual (começa com o tema Discord)
+local currentTheme = "Discord"
+
+-- Tabela de Configuração dos Temas
 local THEMES = {
 	Discord = {
 		FrameBG = Color3.fromRGB(54, 57, 63),
@@ -18,8 +18,6 @@ local THEMES = {
 		ButtonTP = Color3.fromRGB(88, 101, 242),
 		ButtonRefresh = Color3.fromRGB(67, 181, 129),
 		ButtonClose = Color3.fromRGB(237, 66, 69),
-		ButtonFlyOff = Color3.fromRGB(237, 66, 69),
-		ButtonFlyOn = Color3.fromRGB(67, 181, 129),
 		WarningBG_Wild = Color3.fromRGB(67, 181, 129),
 		WarningBG_Other = Color3.fromRGB(255, 69, 0),
 		WarningText = Color3.fromRGB(255, 255, 255),
@@ -30,19 +28,20 @@ local THEMES = {
 		StrokeTransparency = 0
 	}
 }
-local currentTheme = "Discord"
 
--- Funções helpers
+-- Função helper para conectar eventos e salvar para cleanup
 local function safeConnect(signal, func)
 	local conn = signal:Connect(func)
 	table.insert(connections, conn)
 	return conn
 end
 
+-- Atualiza Character no spawn
 local function setupCharacter(char)
 	Character = char
 	Humanoid = char:WaitForChild("Humanoid")
 end
+
 setupCharacter(Player.Character or Player.CharacterAdded:Wait())
 safeConnect(Player.CharacterAdded, setupCharacter)
 
@@ -58,7 +57,6 @@ local RefreshButton = Instance.new("TextButton")
 local FlyButton = Instance.new("TextButton")
 local CloseButton = Instance.new("TextButton")
 
--- UICorners
 local FrameCorner = Instance.new("UICorner")
 local TeleportCorner = Instance.new("UICorner")
 local RefreshCorner = Instance.new("UICorner")
@@ -66,7 +64,6 @@ local FlyCorner = Instance.new("UICorner")
 local CloseCorner = Instance.new("UICorner")
 local WarningCorner = Instance.new("UICorner")
 
--- UIStrokes
 local FrameStroke = Instance.new("UIStroke")
 local TeleportStroke = Instance.new("UIStroke")
 local RefreshStroke = Instance.new("UIStroke")
@@ -74,7 +71,6 @@ local FlyStroke = Instance.new("UIStroke")
 local CloseStroke = Instance.new("UIStroke")
 local WarningStroke = Instance.new("UIStroke")
 
--- Parents
 FrameCorner.Parent = Frame
 TeleportCorner.Parent = TeleportButton
 RefreshCorner.Parent = RefreshButton
@@ -93,16 +89,13 @@ GUI.Name = "TeleportGUI"
 GUI.Parent = Player:WaitForChild("PlayerGui")
 GUI.ResetOnSpawn = false
 
--- Frame base
 Frame.Name = "TPFrame"
 Frame.Size = UDim2.new(0, 320, 0, 240)
 Frame.Position = UDim2.new(0.5, -160, 0.5, -120)
 Frame.AnchorPoint = Vector2.new(0.5, 0.5)
 Frame.BorderSizePixel = 0
-Frame.BackgroundColor3 = THEMES.Discord.FrameBG
 Frame.Parent = GUI
 
--- Labels
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Position = UDim2.new(0, 10, 0, 5)
 TitleLabel.Text = "TP Horse"
@@ -110,7 +103,6 @@ TitleLabel.Font = Enum.Font.SourceSansSemibold
 TitleLabel.TextSize = 20
 TitleLabel.BackgroundTransparency = 1
 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
-TitleLabel.TextColor3 = THEMES.Discord.TextPrimary
 TitleLabel.Parent = Frame
 
 IslandLabel.Name = "IslandLabel"
@@ -121,8 +113,15 @@ IslandLabel.Font = Enum.Font.SourceSans
 IslandLabel.TextSize = 14
 IslandLabel.BackgroundTransparency = 1
 IslandLabel.TextXAlignment = Enum.TextXAlignment.Left
-IslandLabel.TextColor3 = THEMES.Discord.TextSecondary
 IslandLabel.Parent = Frame
+
+CloseButton.Size = UDim2.new(0, 28, 0, 28)
+CloseButton.Position = UDim2.new(1, -35, 0, 6)
+CloseButton.Text = "X"
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 18
+CloseButton.AutoButtonColor = false
+CloseButton.Parent = Frame
 
 StatusLabel.Size = UDim2.new(1, -20, 0.3, 0)
 StatusLabel.Position = UDim2.new(0, 10, 0.25, 0)
@@ -131,7 +130,6 @@ StatusLabel.TextSize = 16
 StatusLabel.TextWrapped = true
 StatusLabel.TextYAlignment = Enum.TextYAlignment.Top
 StatusLabel.BackgroundTransparency = 1
-StatusLabel.TextColor3 = THEMES.Discord.TextPrimary
 StatusLabel.Parent = Frame
 
 WarningLabel.Name = "WarningLabel"
@@ -147,15 +145,12 @@ WarningLabel.Visible = false
 WarningLabel.Parent = Frame
 WarningCorner.CornerRadius = UDim.new(0, 5)
 
--- Botões
 TeleportButton.Size = UDim2.new(0, 93, 0, 40)
 TeleportButton.Position = UDim2.new(0, 10, 0.78, 0)
 TeleportButton.Text = "TP"
 TeleportButton.Font = Enum.Font.SourceSansSemibold
 TeleportButton.TextSize = 18
 TeleportButton.AutoButtonColor = false
-TeleportButton.BackgroundColor3 = THEMES.Discord.ButtonTP
-TeleportButton.TextColor3 = THEMES.Discord.TextPrimary
 TeleportButton.Parent = Frame
 
 RefreshButton.Size = UDim2.new(0, 93, 0, 40)
@@ -164,8 +159,6 @@ RefreshButton.Text = "Busca"
 RefreshButton.Font = Enum.Font.SourceSansSemibold
 RefreshButton.TextSize = 18
 RefreshButton.AutoButtonColor = false
-RefreshButton.BackgroundColor3 = THEMES.Discord.ButtonRefresh
-RefreshButton.TextColor3 = THEMES.Discord.TextPrimary
 RefreshButton.Parent = Frame
 
 FlyButton.Size = UDim2.new(0, 93, 0, 40)
@@ -174,114 +167,307 @@ FlyButton.Text = "Fly"
 FlyButton.Font = Enum.Font.SourceSansSemibold
 FlyButton.TextSize = 18
 FlyButton.AutoButtonColor = false
-FlyButton.BackgroundColor3 = THEMES.Discord.ButtonFlyOff
-FlyButton.TextColor3 = THEMES.Discord.TextPrimary
+FlyButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
 FlyButton.Parent = Frame
 
-CloseButton.Size = UDim2.new(0, 28, 0, 28)
-CloseButton.Position = UDim2.new(1, -35, 0, 6)
-CloseButton.Text = "X"
-CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.TextSize = 18
-CloseButton.AutoButtonColor = false
-CloseButton.BackgroundColor3 = THEMES.Discord.ButtonClose
-CloseButton.TextColor3 = THEMES.Discord.TextPrimary
-CloseButton.Parent = Frame
+GUI.Enabled = false
 
--- Corners
-FrameCorner.CornerRadius = THEMES.Discord.CornerRadius
-TeleportCorner.CornerRadius = THEMES.Discord.ButtonCorner
-RefreshCorner.CornerRadius = THEMES.Discord.ButtonCorner
-FlyCorner.CornerRadius = THEMES.Discord.ButtonCorner
-CloseCorner.CornerRadius = THEMES.Discord.ButtonCorner
+local function applyTheme(themeName)
+	local theme = THEMES[themeName]
+	if not theme then return end
+	Frame.BackgroundColor3 = theme.FrameBG
+	FrameCorner.CornerRadius = theme.CornerRadius
+	FrameStroke.Color = theme.StrokeColor
+	FrameStroke.Thickness = theme.StrokeThickness
+	FrameStroke.Transparency = theme.StrokeTransparency
 
--- Strokes
-FrameStroke.Color = THEMES.Discord.StrokeColor
-FrameStroke.Thickness = THEMES.Discord.StrokeThickness
-FrameStroke.Transparency = THEMES.Discord.StrokeTransparency
-TeleportStroke.Color = THEMES.Discord.StrokeColor
-TeleportStroke.Thickness = THEMES.Discord.StrokeThickness
-TeleportStroke.Transparency = THEMES.Discord.StrokeTransparency
-RefreshStroke.Color = THEMES.Discord.StrokeColor
-RefreshStroke.Thickness = THEMES.Discord.StrokeThickness
-RefreshStroke.Transparency = THEMES.Discord.StrokeTransparency
-FlyStroke.Color = THEMES.Discord.StrokeColor
-FlyStroke.Thickness = THEMES.Discord.StrokeThickness
-FlyStroke.Transparency = THEMES.Discord.StrokeTransparency
-CloseStroke.Color = THEMES.Discord.StrokeColor
-CloseStroke.Thickness = THEMES.Discord.StrokeThickness
-CloseStroke.Transparency = THEMES.Discord.StrokeTransparency
-WarningStroke.Color = THEMES.Discord.StrokeColor
-WarningStroke.Thickness = THEMES.Discord.StrokeThickness
-WarningStroke.Transparency = THEMES.Discord.StrokeTransparency
+	TitleLabel.TextColor3 = theme.TextPrimary
+	StatusLabel.TextColor3 = theme.TextPrimary
+	IslandLabel.TextColor3 = theme.TextSecondary
+	WarningLabel.TextColor3 = theme.WarningText
+	WarningStroke.Color = theme.StrokeColor
+	WarningStroke.Thickness = theme.StrokeThickness
+	WarningStroke.Transparency = theme.StrokeTransparency
 
--- ======================
--- FUNÇÕES DE TELEPORT/REFRESH
--- ======================
+	TeleportButton.BackgroundColor3 = theme.ButtonTP
+	RefreshButton.BackgroundColor3 = theme.ButtonRefresh
+	CloseButton.BackgroundColor3 = theme.ButtonClose
+
+	TeleportButton.TextColor3 = theme.TextPrimary
+	RefreshButton.TextColor3 = theme.TextPrimary
+	CloseButton.TextColor3 = theme.TextPrimary
+
+	local bCorner = theme.ButtonCorner
+	TeleportCorner.CornerRadius = bCorner
+	RefreshCorner.CornerRadius = bCorner
+	CloseCorner.CornerRadius = bCorner
+
+	local bStrokeColor = theme.StrokeColor
+	local bStrokeThickness = theme.StrokeThickness
+	local bStrokeTransparency = theme.StrokeTransparency
+	TeleportStroke.Color = bStrokeColor
+	TeleportStroke.Thickness = bStrokeThickness
+	TeleportStroke.Transparency = bStrokeTransparency
+	RefreshStroke.Color = bStrokeColor
+	RefreshStroke.Thickness = bStrokeThickness
+	RefreshStroke.Transparency = bStrokeTransparency
+	CloseStroke.Color = bStrokeColor
+	CloseStroke.Thickness = bStrokeThickness
+	CloseStroke.Transparency = bStrokeTransparency
+
+	currentTheme = themeName
+end
+
+-- Teleport logic
 local validModels = {}
 local currentModelIndex = 1
 
 local function findValidModels()
-	local islandsFolder = Workspace:FindFirstChild("Islands")
-	if not islandsFolder then return {}, "Erro: Islands Missing" end
+	local islandsFolder = workspace:FindFirstChild("Islands")
+	if not islandsFolder then
+		warn("Pasta 'Islands' não encontrada no Workspace")
+		return {}, "Erro: Islands Missing"
+	end
 
-	-- Remove highlights antigos
-	for _, obj in ipairs(Workspace:GetDescendants()) do
+	for _, obj in ipairs(workspace:GetDescendants()) do
 		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then
 			obj:Destroy()
 		end
 	end
 
-	-- Descobre ilha do jogador
 	local playerIslandFolder = Character and Character.Parent
 	local islandContainer = nil
-	while playerIslandFolder and playerIslandFolder ~= islandsFolder and playerIslandFolder ~= Workspace do
+
+	while playerIslandFolder and playerIslandFolder ~= islandsFolder and playerIslandFolder ~= workspace do
 		if playerIslandFolder.Parent == islandsFolder then
 			islandContainer = playerIslandFolder
 			break
 		end
 		playerIslandFolder = playerIslandFolder.Parent
 	end
-	if not islandContainer then return {}, "Erro: Não na Ilha" end
+
+	if not islandContainer then
+		warn("Ilha do jogador não identificada dentro da pasta 'Islands'.")
+		return {}, "Erro: Não na Ilha"
+	end
 
 	local islandName = islandContainer.Name
 	local wildHorses = {}
 	local otherHorses = {}
-
-	local theme = THEMES[currentTheme]
+	local currentThemeColors = THEMES[currentTheme]
 
 	for _, descendant in ipairs(islandContainer:GetDescendants()) do
-		if descendant:IsA("Model")
-		and descendant:FindFirstChildOfClass("Humanoid")
-		and descendant:FindFirstChild("HumanoidRootPart")
-		and descendant.Name:match("^%b{}$") then
-
-			local rootPart = descendant.HumanoidRootPart
+		if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") and descendant:FindFirstChild("HumanoidRootPart") and descendant.Name:match("^%b{}$") then
+			local rootPart = descendant:FindFirstChild("HumanoidRootPart")
 			local hasCaptureProgress = false
-			for _, e in ipairs(descendant:GetDescendants()) do
-				if e.Name == "CaptureProgress" then hasCaptureProgress = true break end
+			for _, element in ipairs(descendant:GetDescendants()) do
+				if element.Name == "CaptureProgress" then
+					hasCaptureProgress = true
+					break
+				end
 			end
 
 			local highlight = Instance.new("Highlight")
 			highlight.Name = "TeleportHighlight"
-			highlight.FillColor = hasCaptureProgress and theme.WarningBG_Wild or theme.ButtonTP
-			highlight.OutlineColor = Color3.fromRGB(255,255,255)
+			highlight.FillColor = hasCaptureProgress and currentThemeColors.WarningBG_Wild or currentThemeColors.ButtonTP
+			highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
 			highlight.FillTransparency = 0.5
 			highlight.OutlineTransparency = 0
 			highlight.Adornee = descendant
 			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 			highlight.Parent = descendant
 
-			local horseData = { Model = descendant, RootPart = rootPart, IsWild = hasCaptureProgress }
-			if hasCaptureProgress then table.insert(wildHorses, horseData)
-			else table.insert(otherHorses, horseData) end
+			local horseData = {
+				Model = descendant,
+				RootPart = rootPart,
+				IsWild = hasCaptureProgress
+			}
+
+			if horseData.IsWild then
+				table.insert(wildHorses, horseData)
+			else
+				table.insert(otherHorses, horseData)
+			end
 		end
 	end
 
-	table.sort(wildHorses, function(a,b) return a.Model.Name<b.Model.Name end)
-	table.sort(otherHorses, function(a,b) return a.Model.Name<b.Model.Name end)
+	table.sort(wildHorses, function(a, b) return a.Model.Name < b.Model.Name end)
+	table.sort(otherHorses, function(a, b) return a.Model.Name < b.Model.Name end)
+
 	local allHorses = {}
-	for _,h in ipairs(wildHorses) do table.insert(allHorses,h) end
+	for _, horse in ipairs(wildHorses) do table.insert(allHorses, horse) end
+	for _, horse in ipairs(otherHorses) do table.insert(allHorses, horse) end
+
+	return allHorses, islandName
+end
+
+local function checkCurrentModelStatus()
+	if GUI.Enabled == false or #validModels == 0 or currentModelIndex > #validModels then
+		WarningLabel.Visible = false
+		return
+	end
+	local theme = THEMES[currentTheme]
+	local modelInfo = validModels[currentModelIndex]
+	local currentModel = modelInfo.Model
+	local isWildNow = false
+	for _, element in ipairs(currentModel:GetDescendants()) do
+		if element.Name == "CaptureProgress" then
+			isWildNow = true
+			break
+		end
+	end
+	modelInfo.IsWild = isWildNow
+	if isWildNow then
+		WarningLabel.Text = "É CAVALO SELVAGEM (LIVE)"
+		WarningLabel.BackgroundColor3 = theme.WarningBG_Wild
+		WarningLabel.Visible = true
+	else
+		WarningLabel.Text = "NÃO É CAVALO SELVAGEM (LIVE)"
+		WarningLabel.BackgroundColor3 = theme.WarningBG_Other
+		WarningLabel.Visible = true
+	end
+end
+
+local function updateGUIStatus()
+	if #validModels == 0 then
+		StatusLabel.Text = "Nenhum cavalo encontrado com nome entre { }"
+		WarningLabel.Visible = false
+		return
+	end
+	local modelInfo = validModels[currentModelIndex]
+	local pos = modelInfo.RootPart.Position
+	StatusLabel.Text = string.format("Cavalo %d de %d:\n%s\nPosição: %.1f, %.1f, %.1f",
+		currentModelIndex,
+		#validModels,
+		modelInfo.Model.Name,
+		pos.X, pos.Y, pos.Z)
+	checkCurrentModelStatus()
+end
+
+local function teleportToNextModel()
+	if GUI.Enabled == false or #validModels == 0 then return end
+	currentModelIndex += 1
+	if currentModelIndex > #validModels then currentModelIndex = 1 end
+	local target = validModels[currentModelIndex]
+	if target and target.Model and target.RootPart and Character then
+		Character:PivotTo(CFrame.new(target.RootPart.Position + Vector3.new(0, 3, 0)))
+		updateGUIStatus()
+	end
+end
+
+local function refreshHorseList()
+	if GUI.Enabled == false then return end
+	local islandName
+	validModels, islandName = findValidModels()
+	currentModelIndex = 1
+	if islandName and islandName:sub(1,4) == "Erro" then
+		IslandLabel.Text = "Ilha: Falha na identificação"
+	else
+		IslandLabel.Text = "Ilha: " .. (islandName or "Desconhecida")
+	end
+	updateGUIStatus()
+end
+
+local function cleanup()
+	if GUI then GUI.Enabled = false end
+	for _, conn in pairs(connections) do
+		if conn:IsConnected() then conn:Disconnect() end
+	end
+	connections = {}
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then
+			obj:Destroy()
+		end
+	end
+	if GUI then GUI:Destroy() end
+end
+
+-- Fly
+local flyEnabled = false
+local flySpeed = 3
+local bodyGyro, bodyVelocity
+
+local function startFly()
+	if not Character or not Humanoid then return end
+	local root = Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Torso") or Character:FindFirstChild("UpperTorso")
+	if not root then return end
+
+	bodyGyro = Instance.new("BodyGyro")
+	bodyGyro.MaxTorque = Vector3.new(1e5,1e5,1e5)
+	bodyGyro.P = 1e4
+	bodyGyro.CFrame = root.CFrame
+	bodyGyro.Parent = root
+
+	bodyVelocity = Instance.new("BodyVelocity")
+	bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
+	bodyVelocity.Velocity = Vector3.new(0,0,0)
+	bodyVelocity.Parent = root
+end
+
+local function stopFly()
+	if bodyGyro then bodyGyro:Destroy(); bodyGyro = nil end
+	if bodyVelocity then bodyVelocity:Destroy(); bodyVelocity = nil end
+end
+
+local function updateFly()
+	if flyEnabled and Character and bodyGyro and bodyVelocity then
+		local root = Character:FindFirstChild("HumanoidRootPart") or Character:FindFirstChild("Torso") or Character:FindFirstChild("UpperTorso")
+		if not root then return end
+		local moveDir = Vector3.new()
+		if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + (root.CFrame.LookVector) end
+		if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - (root.CFrame.LookVector) end
+		if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - (root.CFrame.RightVector) end
+		if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + (root.CFrame.RightVector) end
+		moveDir = moveDir.Unit
+		bodyVelocity.Velocity = moveDir * flySpeed
+		bodyGyro.CFrame = CFrame.new(root.Position, root.Position + root.CFrame.LookVector)
+	end
+end
+
+FlyButton.MouseButton1Click:Connect(function()
+	flyEnabled = not flyEnabled
+	if flyEnabled then
+		startFly()
+		FlyButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129)
+	else
+		stopFly()
+		FlyButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69)
+	end
+end)
+
+safeConnect(RunService.Heartbeat, function()
+	if flyEnabled then updateFly() end
+end)
+
+safeConnect(TeleportButton.MouseButton1Click, teleportToNextModel)
+safeConnect(RefreshButton.MouseButton1Click, refreshHorseList)
+safeConnect(CloseButton.MouseButton1Click, cleanup)
+
+local dragInput, mousePos, framePos
+safeConnect(Frame.InputBegan, function(input)
+	if GUI.Enabled == false then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+		mousePos = UIS:GetMouseLocation()
+		framePos = Frame.Position
+		safeConnect(input.Changed, function()
+			if dragInput and dragInput.UserInputState == Enum.UserInputState.End then
+				dragInput = nil
+			end
+		end)
+	end
+end)
+
+safeConnect(RunService.Heartbeat, function()
+	if dragInput and GUI.Enabled then
+		local delta = UIS:GetMouseLocation() - mousePos
+		Frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
+	end
+end)
+
+GUI.Enabled = true
+refreshHorseList()
+ble.insert(allHorses,h) end
 	for _,h in ipairs(otherHorses) do table.insert(allHorses,h) end
 
 	return allHorses, islandName
