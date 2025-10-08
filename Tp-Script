@@ -39,6 +39,7 @@ end
 setupCharacter(Player.Character or Player.CharacterAdded:Wait())
 safeConnect(Player.CharacterAdded, setupCharacter)
 
+-- === GUI Setup ===
 local GUI = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
 local TitleLabel = Instance.new("TextLabel")
@@ -162,6 +163,7 @@ FlyButton.TextSize = 18
 FlyButton.AutoButtonColor = false
 FlyButton.Parent = Frame
 
+-- === Theme ===
 local function applyTheme()
 	local theme = THEMES.Discord
 	Frame.BackgroundColor3 = theme.FrameBG
@@ -206,6 +208,7 @@ local function applyTheme()
 	CloseStroke.Transparency = bStrokeTransparency
 end
 
+-- === Horses ===
 local validModels = {}
 local currentModelIndex = 1
 
@@ -312,51 +315,62 @@ safeConnect(TeleportButton.MouseButton1Click,teleportToNextModel)
 safeConnect(RefreshButton.MouseButton1Click,refreshHorseList)
 safeConnect(CloseButton.MouseButton1Click,cleanup)
 
-local flyEnabled=false
-local flySpeed=3
+-- === Novo Fly System ===
+local flyEnabled = false
+local flySpeed = 50
 local flyBodyVelocity
 local flyBodyGyro
 
 local function toggleFly()
 	if not Character then return end
-	flyEnabled=not flyEnabled
+	flyEnabled = not flyEnabled
+	local hrp = Character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+
 	if flyEnabled then
-		FlyButton.BackgroundColor3=Color3.fromRGB(0,255,0)
-		local rootPart=Character:FindFirstChild("HumanoidRootPart")
-		if rootPart then
-			flyBodyVelocity=Instance.new("BodyVelocity")
-			flyBodyVelocity.Velocity=Vector3.new(0,0,0)
-			flyBodyVelocity.MaxForce=Vector3.new(1e5,1e5,1e5)
-			flyBodyVelocity.Parent=rootPart
-			flyBodyGyro=Instance.new("BodyGyro")
-			flyBodyGyro.MaxTorque=Vector3.new(1e5,1e5,1e5)
-			flyBodyGyro.CFrame=rootPart.CFrame
-			flyBodyGyro.Parent=rootPart
-		end
+		FlyButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
+
+		flyBodyVelocity = Instance.new("BodyVelocity")
+		flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+		flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+		flyBodyVelocity.Parent = hrp
+
+		flyBodyGyro = Instance.new("BodyGyro")
+		flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+		flyBodyGyro.CFrame = hrp.CFrame
+		flyBodyGyro.Parent = hrp
 	else
-		FlyButton.BackgroundColor3=Color3.fromRGB(237,66,69)
-		if flyBodyVelocity then flyBodyVelocity:Destroy() end
-		if flyBodyGyro then flyBodyGyro:Destroy() end
+		FlyButton.BackgroundColor3 = Color3.fromRGB(237,66,69)
+		if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity=nil end
+		if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro=nil end
 	end
 end
 
-safeConnect(FlyButton.MouseButton1Click,toggleFly)
+safeConnect(FlyButton.MouseButton1Click, toggleFly)
 
-safeConnect(RunService.Heartbeat,function()
+safeConnect(RunService.Heartbeat, function()
 	if flyEnabled and Character and Character:FindFirstChild("HumanoidRootPart") then
-		local hrp=Character.HumanoidRootPart
-		local cam=CFrame.new(hrp.Position,hrp.Position+workspace.CurrentCamera.CFrame.LookVector)
-		if flyBodyGyro then flyBodyGyro.CFrame=cam end
-		local moveDir=Vector3.new()
-		if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir=moveDir+workspace.CurrentCamera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir=moveDir-workspace.CurrentCamera.CFrame.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir=moveDir-workspace.CurrentCamera.CFrame.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir=moveDir+workspace.CurrentCamera.CFrame.RightVector end
-		moveDir=moveDir.Unit*flySpeed
-		if flyBodyVelocity then flyBodyVelocity.Velocity=moveDir end
+		local hrp = Character.HumanoidRootPart
+		local cam = workspace.CurrentCamera.CFrame
+
+		local moveVector = Vector3.new()
+		if UIS:IsKeyDown(Enum.KeyCode.W) then moveVector = moveVector + cam.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.S) then moveVector = moveVector - cam.LookVector end
+		if UIS:IsKeyDown(Enum.KeyCode.A) then moveVector = moveVector - cam.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.D) then moveVector = moveVector + cam.RightVector end
+		if UIS:IsKeyDown(Enum.KeyCode.Space) then moveVector = moveVector + Vector3.new(0,1,0) end
+		if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveVector = moveVector - Vector3.new(0,1,0) end
+
+		if moveVector.Magnitude > 0 then
+			moveVector = moveVector.Unit * flySpeed
+		end
+
+		if flyBodyVelocity then flyBodyVelocity.Velocity = moveVector end
+		if flyBodyGyro then flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.LookVector) end
 	end
 end)
 
+-- === Drag GUI ===
 local dragInput,mousePos,framePos
 safeConnect(Frame.InputBegan,function(input)
 	if GUI.Enabled==false then return end
@@ -378,8 +392,6 @@ safeConnect(RunService.Heartbeat,function()
 end)
 
 safeConnect(RunService.Heartbeat,checkCurrentModelStatus)
-
-if not Character then Player.CharacterAdded:Wait() Character=Player.Character end
 
 applyTheme()
 refreshHorseList()
