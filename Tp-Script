@@ -317,7 +317,7 @@ safeConnect(CloseButton.MouseButton1Click,cleanup)
 
 -- === Novo Fly System ===
 local flyEnabled = false
-local flySpeed = 30000
+local flySpeed = 3000
 local flyBodyVelocity
 local flyBodyGyro
 
@@ -332,7 +332,7 @@ local function toggleFly()
 
 		flyBodyVelocity = Instance.new("BodyVelocity")
 		flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		flyBodyVelocity.Velocity = Vector3.new(0,0,0)
+		flyBodyVelocity.Velocity = Vector3.new(1,1,1)
 		flyBodyVelocity.Parent = hrp
 
 		flyBodyGyro = Instance.new("BodyGyro")
