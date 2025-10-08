@@ -1,11 +1,13 @@
+-- Serviços
 local Player = game:GetService("Players").LocalPlayer
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local UserInputService = UIS
+local Workspace = game:GetService("Workspace")
 
+-- Variáveis de Character
 local Character
 local Humanoid
-local connections = {} -- para guardar todos os Connects
+local connections = {}
 
 -- Tema fixo: Discord
 local THEMES = {
@@ -16,8 +18,8 @@ local THEMES = {
 		ButtonTP = Color3.fromRGB(88, 101, 242),
 		ButtonRefresh = Color3.fromRGB(67, 181, 129),
 		ButtonClose = Color3.fromRGB(237, 66, 69),
-		ButtonFlyOff = Color3.fromRGB(237, 66, 69), -- Vermelho desligado
-		ButtonFlyOn = Color3.fromRGB(67, 181, 129), -- Verde ligado
+		ButtonFlyOff = Color3.fromRGB(237, 66, 69),
+		ButtonFlyOn = Color3.fromRGB(67, 181, 129),
 		WarningBG_Wild = Color3.fromRGB(67, 181, 129),
 		WarningBG_Other = Color3.fromRGB(255, 69, 0),
 		WarningText = Color3.fromRGB(255, 255, 255),
@@ -30,6 +32,7 @@ local THEMES = {
 }
 local currentTheme = "Discord"
 
+-- Funções helpers
 local function safeConnect(signal, func)
 	local conn = signal:Connect(func)
 	table.insert(connections, conn)
@@ -71,7 +74,7 @@ local FlyStroke = Instance.new("UIStroke")
 local CloseStroke = Instance.new("UIStroke")
 local WarningStroke = Instance.new("UIStroke")
 
--- Parent dos Corners e Strokes
+-- Parents
 FrameCorner.Parent = Frame
 TeleportCorner.Parent = TeleportButton
 RefreshCorner.Parent = RefreshButton
@@ -90,6 +93,7 @@ GUI.Name = "TeleportGUI"
 GUI.Parent = Player:WaitForChild("PlayerGui")
 GUI.ResetOnSpawn = false
 
+-- Frame base
 Frame.Name = "TPFrame"
 Frame.Size = UDim2.new(0, 320, 0, 240)
 Frame.Position = UDim2.new(0.5, -160, 0.5, -120)
@@ -98,6 +102,7 @@ Frame.BorderSizePixel = 0
 Frame.BackgroundColor3 = THEMES.Discord.FrameBG
 Frame.Parent = GUI
 
+-- Labels
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Position = UDim2.new(0, 10, 0, 5)
 TitleLabel.Text = "TP Horse"
@@ -118,16 +123,6 @@ IslandLabel.BackgroundTransparency = 1
 IslandLabel.TextXAlignment = Enum.TextXAlignment.Left
 IslandLabel.TextColor3 = THEMES.Discord.TextSecondary
 IslandLabel.Parent = Frame
-
-CloseButton.Size = UDim2.new(0, 28, 0, 28)
-CloseButton.Position = UDim2.new(1, -35, 0, 6)
-CloseButton.Text = "X"
-CloseButton.Font = Enum.Font.SourceSansBold
-CloseButton.TextSize = 18
-CloseButton.AutoButtonColor = false
-CloseButton.BackgroundColor3 = THEMES.Discord.ButtonClose
-CloseButton.TextColor3 = THEMES.Discord.TextPrimary
-CloseButton.Parent = Frame
 
 StatusLabel.Size = UDim2.new(1, -20, 0.3, 0)
 StatusLabel.Position = UDim2.new(0, 10, 0.25, 0)
@@ -152,6 +147,7 @@ WarningLabel.Visible = false
 WarningLabel.Parent = Frame
 WarningCorner.CornerRadius = UDim.new(0, 5)
 
+-- Botões
 TeleportButton.Size = UDim2.new(0, 93, 0, 40)
 TeleportButton.Position = UDim2.new(0, 10, 0.78, 0)
 TeleportButton.Text = "TP"
@@ -182,6 +178,16 @@ FlyButton.BackgroundColor3 = THEMES.Discord.ButtonFlyOff
 FlyButton.TextColor3 = THEMES.Discord.TextPrimary
 FlyButton.Parent = Frame
 
+CloseButton.Size = UDim2.new(0, 28, 0, 28)
+CloseButton.Position = UDim2.new(1, -35, 0, 6)
+CloseButton.Text = "X"
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 18
+CloseButton.AutoButtonColor = false
+CloseButton.BackgroundColor3 = THEMES.Discord.ButtonClose
+CloseButton.TextColor3 = THEMES.Discord.TextPrimary
+CloseButton.Parent = Frame
+
 -- Corners
 FrameCorner.CornerRadius = THEMES.Discord.CornerRadius
 TeleportCorner.CornerRadius = THEMES.Discord.ButtonCorner
@@ -189,111 +195,106 @@ RefreshCorner.CornerRadius = THEMES.Discord.ButtonCorner
 FlyCorner.CornerRadius = THEMES.Discord.ButtonCorner
 CloseCorner.CornerRadius = THEMES.Discord.ButtonCorner
 
--- Stroke
+-- Strokes
 FrameStroke.Color = THEMES.Discord.StrokeColor
 FrameStroke.Thickness = THEMES.Discord.StrokeThickness
 FrameStroke.Transparency = THEMES.Discord.StrokeTransparency
-
 TeleportStroke.Color = THEMES.Discord.StrokeColor
 TeleportStroke.Thickness = THEMES.Discord.StrokeThickness
 TeleportStroke.Transparency = THEMES.Discord.StrokeTransparency
-
 RefreshStroke.Color = THEMES.Discord.StrokeColor
 RefreshStroke.Thickness = THEMES.Discord.StrokeThickness
 RefreshStroke.Transparency = THEMES.Discord.StrokeTransparency
-
 FlyStroke.Color = THEMES.Discord.StrokeColor
 FlyStroke.Thickness = THEMES.Discord.StrokeThickness
 FlyStroke.Transparency = THEMES.Discord.StrokeTransparency
-
 CloseStroke.Color = THEMES.Discord.StrokeColor
 CloseStroke.Thickness = THEMES.Discord.StrokeThickness
 CloseStroke.Transparency = THEMES.Discord.StrokeTransparency
+WarningStroke.Color = THEMES.Discord.StrokeColor
+WarningStroke.Thickness = THEMES.Discord.StrokeThickness
+WarningStroke.Transparency = THEMES.Discord.StrokeTransparency
 
 -- ======================
--- FUNÇÃO FLY LEGÍTIMO
+-- FUNÇÕES DE TELEPORT/REFRESH
 -- ======================
-local flyEnabled = false
-local FlySpeed = 3
-local bodyVelocity, bodyGyro
+local validModels = {}
+local currentModelIndex = 1
 
-local function enableFly()
-	if not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
-	local HRP = Character.HumanoidRootPart
+local function findValidModels()
+	local islandsFolder = Workspace:FindFirstChild("Islands")
+	if not islandsFolder then return {}, "Erro: Islands Missing" end
 
-	-- ShiftLock
-	Player.DevEnableMouseLock = true
+	-- Remove highlights antigos
+	for _, obj in ipairs(Workspace:GetDescendants()) do
+		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then
+			obj:Destroy()
+		end
+	end
 
-	-- Criar BodyVelocity e BodyGyro
-	bodyVelocity = Instance.new("BodyVelocity")
-	bodyVelocity.MaxForce = Vector3.new(1e5,1e5,1e5)
-	bodyVelocity.Velocity = Vector3.new(0,0,0)
-	bodyVelocity.P = 1e4
-	bodyVelocity.Parent = HRP
+	-- Descobre ilha do jogador
+	local playerIslandFolder = Character and Character.Parent
+	local islandContainer = nil
+	while playerIslandFolder and playerIslandFolder ~= islandsFolder and playerIslandFolder ~= Workspace do
+		if playerIslandFolder.Parent == islandsFolder then
+			islandContainer = playerIslandFolder
+			break
+		end
+		playerIslandFolder = playerIslandFolder.Parent
+	end
+	if not islandContainer then return {}, "Erro: Não na Ilha" end
 
-	bodyGyro = Instance.new("BodyGyro")
-	bodyGyro.MaxTorque = Vector3.new(1e5,1e5,1e5)
-	bodyGyro.CFrame = HRP.CFrame
-	bodyGyro.P = 1e4
-	bodyGyro.Parent = HRP
+	local islandName = islandContainer.Name
+	local wildHorses = {}
+	local otherHorses = {}
+
+	local theme = THEMES[currentTheme]
+
+	for _, descendant in ipairs(islandContainer:GetDescendants()) do
+		if descendant:IsA("Model")
+		and descendant:FindFirstChildOfClass("Humanoid")
+		and descendant:FindFirstChild("HumanoidRootPart")
+		and descendant.Name:match("^%b{}$") then
+
+			local rootPart = descendant.HumanoidRootPart
+			local hasCaptureProgress = false
+			for _, e in ipairs(descendant:GetDescendants()) do
+				if e.Name == "CaptureProgress" then hasCaptureProgress = true break end
+			end
+
+			local highlight = Instance.new("Highlight")
+			highlight.Name = "TeleportHighlight"
+			highlight.FillColor = hasCaptureProgress and theme.WarningBG_Wild or theme.ButtonTP
+			highlight.OutlineColor = Color3.fromRGB(255,255,255)
+			highlight.FillTransparency = 0.5
+			highlight.OutlineTransparency = 0
+			highlight.Adornee = descendant
+			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+			highlight.Parent = descendant
+
+			local horseData = { Model = descendant, RootPart = rootPart, IsWild = hasCaptureProgress }
+			if hasCaptureProgress then table.insert(wildHorses, horseData)
+			else table.insert(otherHorses, horseData) end
+		end
+	end
+
+	table.sort(wildHorses, function(a,b) return a.Model.Name<b.Model.Name end)
+	table.sort(otherHorses, function(a,b) return a.Model.Name<b.Model.Name end)
+	local allHorses = {}
+	for _,h in ipairs(wildHorses) do table.insert(allHorses,h) end
+	for _,h in ipairs(otherHorses) do table.insert(allHorses,h) end
+
+	return allHorses, islandName
 end
 
-local function disableFly()
-	if bodyVelocity then bodyVelocity:Destroy() bodyVelocity = nil end
-	if bodyGyro then bodyGyro:Destroy() bodyGyro = nil end
-	Player.DevEnableMouseLock = false
-end
-
-local function updateFly()
-	if not flyEnabled or not Character or not Character:FindFirstChild("HumanoidRootPart") then return end
-	local HRP = Character.HumanoidRootPart
-	local moveDirection = Vector3.new(0,0,0)
-
-	if UIS:IsKeyDown(Enum.KeyCode.W) then
-		moveDirection += workspace.CurrentCamera.CFrame.LookVector
+local function checkCurrentModelStatus()
+	if GUI.Enabled == false or #validModels == 0 or currentModelIndex > #validModels then
+		WarningLabel.Visible = false
+		return
 	end
-	if UIS:IsKeyDown(Enum.KeyCode.S) then
-		moveDirection -= workspace.CurrentCamera.CFrame.LookVector
-	end
-	if UIS:IsKeyDown(Enum.KeyCode.A) then
-		moveDirection -= workspace.CurrentCamera.CFrame.RightVector
-	end
-	if UIS:IsKeyDown(Enum.KeyCode.D) then
-		moveDirection += workspace.CurrentCamera.CFrame.RightVector
-	end
-
-	bodyVelocity.Velocity = moveDirection.Unit * FlySpeed
-	bodyGyro.CFrame = CFrame.new(HRP.Position, HRP.Position + workspace.CurrentCamera.CFrame.LookVector)
-end
-
--- ======================
--- EVENTO BOTÃO FLY
--- ======================
-local function toggleFly()
-	flyEnabled = not flyEnabled
-	if flyEnabled then
-		enableFly()
-		FlyButton.BackgroundColor3 = THEMES.Discord.ButtonFlyOn
-	else
-		disableFly()
-		FlyButton.BackgroundColor3 = THEMES.Discord.ButtonFlyOff
-	end
-end
-
-safeConnect(FlyButton.MouseButton1Click, toggleFly)
--- Para celular, toque também ativa/desativa
-safeConnect(FlyButton.TouchTap, toggleFly)
-
--- ======================
--- RESTANTE DO SCRIPT (TP, Busca, Fechar, arrastar)
--- ======================
--- (mantive igual ao seu script original, apenas removi tema)
--- Teleport logic e funções auxiliares
--- Código do arrastar GUI mantido
-
--- Loop Fly
-safeConnect(RunService.Heartbeat, function()
-	updateFly()
-end)
-
-GUI.Enabled = true
+	local theme = THEMES[currentTheme]
+	local modelInfo = validModels[currentModelIndex]
+	local currentModel = modelInfo.Model
+	local isWildNow = false
+	for _, e in ipairs(currentModel:GetDescendants()) do
+		if e.Name=="CaptureProgress" then isWildNow=true break
