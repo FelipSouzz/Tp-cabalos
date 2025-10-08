@@ -84,8 +84,8 @@ GUI.Parent = Player:WaitForChild("PlayerGui")
 GUI.ResetOnSpawn = false
 
 Frame.Name = "TPFrame"
-Frame.Size = UDim2.new(0, 320, 0, 240)
-Frame.Position = UDim2.new(0.5, -160, 0.5, -120)
+Frame.Size = UDim2.new(0, 320, 0, 260) -- a little taller to fit speed controls
+Frame.Position = UDim2.new(0.5, -160, 0.5, -130)
 Frame.AnchorPoint = Vector2.new(0.5, 0.5)
 Frame.BorderSizePixel = 0
 Frame.Parent = GUI
@@ -117,7 +117,7 @@ CloseButton.TextSize = 18
 CloseButton.AutoButtonColor = false
 CloseButton.Parent = Frame
 
-StatusLabel.Size = UDim2.new(1, -20, 0.3, 0)
+StatusLabel.Size = UDim2.new(1, -20, 0.32, 0)
 StatusLabel.Position = UDim2.new(0, 10, 0.25, 0)
 StatusLabel.Font = Enum.Font.SourceSans
 StatusLabel.TextSize = 16
@@ -128,7 +128,7 @@ StatusLabel.Parent = Frame
 
 WarningLabel.Name = "WarningLabel"
 WarningLabel.Size = UDim2.new(1, -20, 0, 30)
-WarningLabel.Position = UDim2.new(0, 10, 0.55, 0)
+WarningLabel.Position = UDim2.new(0, 10, 0.6, 0)
 WarningLabel.Text = "..."
 WarningLabel.Font = Enum.Font.SourceSansSemibold
 WarningLabel.TextSize = 16
@@ -163,7 +163,45 @@ FlyButton.TextSize = 18
 FlyButton.AutoButtonColor = false
 FlyButton.Parent = Frame
 
--- === Theme ===
+-- Speed controls (new): minus, label, plus
+local SpeedMinus = Instance.new("TextButton", Frame)
+local SpeedLabel = Instance.new("TextLabel", Frame)
+local SpeedPlus = Instance.new("TextButton", Frame)
+
+SpeedMinus.Size = UDim2.new(0, 36, 0, 28)
+SpeedMinus.Position = UDim2.new(1, -203, 0.78, 6)
+SpeedMinus.Text = "−"
+SpeedMinus.Font = Enum.Font.SourceSansBold
+SpeedMinus.TextSize = 20
+SpeedMinus.AutoButtonColor = false
+
+SpeedLabel.Size = UDim2.new(0, 44, 0, 28)
+SpeedLabel.Position = UDim2.new(1, -166, 0.78, 6)
+SpeedLabel.Text = "3.0"
+SpeedLabel.Font = Enum.Font.SourceSans
+SpeedLabel.TextSize = 16
+SpeedLabel.BackgroundTransparency = 0
+SpeedLabel.TextColor3 = THEMES.Discord.TextPrimary
+SpeedLabel.TextScaled = false
+
+SpeedPlus.Size = UDim2.new(0, 36, 0, 28)
+SpeedPlus.Position = UDim2.new(1, -118, 0.78, 6)
+SpeedPlus.Text = "+"
+SpeedPlus.Font = Enum.Font.SourceSansBold
+SpeedPlus.TextSize = 18
+SpeedPlus.AutoButtonColor = false
+
+-- corners for speed UI
+local smCorner = Instance.new("UICorner", SpeedMinus)
+local slCorner = Instance.new("UICorner", SpeedLabel)
+local spCorner = Instance.new("UICorner", SpeedPlus)
+
+-- Strokes for speed UI
+local smStroke = Instance.new("UIStroke", SpeedMinus)
+local slStroke = Instance.new("UIStroke", SpeedLabel)
+local spStroke = Instance.new("UIStroke", SpeedPlus)
+
+-- === Theme application ===
 local function applyTheme()
 	local theme = THEMES.Discord
 	Frame.BackgroundColor3 = theme.FrameBG
@@ -181,16 +219,28 @@ local function applyTheme()
 	TeleportButton.BackgroundColor3 = theme.ButtonTP
 	RefreshButton.BackgroundColor3 = theme.ButtonRefresh
 	CloseButton.BackgroundColor3 = theme.ButtonClose
-	FlyButton.BackgroundColor3 = Color3.fromRGB(237,66,69)
+	FlyButton.BackgroundColor3 = Color3.fromRGB(237,66,69) -- off = red
 	TeleportButton.TextColor3 = theme.TextPrimary
 	RefreshButton.TextColor3 = theme.TextPrimary
 	FlyButton.TextColor3 = theme.TextPrimary
 	CloseButton.TextColor3 = theme.TextPrimary
+
+	-- style speed UI to match
+	SpeedMinus.BackgroundColor3 = theme.ButtonTP
+	SpeedPlus.BackgroundColor3 = theme.ButtonRefresh
+	SpeedLabel.BackgroundColor3 = theme.FrameBG
+	SpeedLabel.TextColor3 = theme.TextPrimary
+
 	local bCorner = theme.ButtonCorner
 	TeleportCorner.CornerRadius = bCorner
 	RefreshCorner.CornerRadius = bCorner
 	FlyCorner.CornerRadius = bCorner
 	CloseCorner.CornerRadius = bCorner
+
+	smCorner.CornerRadius = UDim.new(0, 6)
+	slCorner.CornerRadius = UDim.new(0, 6)
+	spCorner.CornerRadius = UDim.new(0, 6)
+
 	local bStrokeColor = theme.StrokeColor
 	local bStrokeThickness = theme.StrokeThickness
 	local bStrokeTransparency = theme.StrokeTransparency
@@ -206,6 +256,16 @@ local function applyTheme()
 	CloseStroke.Color = bStrokeColor
 	CloseStroke.Thickness = bStrokeThickness
 	CloseStroke.Transparency = bStrokeTransparency
+
+	smStroke.Color = bStrokeColor
+	smStroke.Thickness = bStrokeThickness
+	smStroke.Transparency = bStrokeTransparency
+	slStroke.Color = bStrokeColor
+	slStroke.Thickness = bStrokeThickness
+	slStroke.Transparency = bStrokeTransparency
+	spStroke.Color = bStrokeColor
+	spStroke.Thickness = bStrokeThickness
+	spStroke.Transparency = bStrokeTransparency
 end
 
 -- === Horses ===
@@ -296,9 +356,12 @@ end
 
 local function refreshHorseList()
 	if GUI.Enabled==false then return end
-	validModels,currentModelIndex = findValidModels()
+	validModels, _ = findValidModels()
 	currentModelIndex=1
-	local islandName=validModels and validModels[1] and validModels[1].Model and validModels[1].Model.Parent and validModels[1].Model.Parent.Name or "Desconhecida"
+	local islandName = "Desconhecida"
+	if validModels and validModels[1] and validModels[1].Model and validModels[1].Model.Parent then
+		islandName = validModels[1].Model.Parent.Name
+	end
 	IslandLabel.Text="Ilha: "..islandName
 	updateGUIStatus()
 end
@@ -315,84 +378,189 @@ safeConnect(TeleportButton.MouseButton1Click,teleportToNextModel)
 safeConnect(RefreshButton.MouseButton1Click,refreshHorseList)
 safeConnect(CloseButton.MouseButton1Click,cleanup)
 
--- === Novo Fly System ===
+-- === Fly: MOBILE ONLY, R15 ONLY, speed adjustable via GUI ===
 local flyEnabled = false
-local flySpeed = 50
+local flySpeed = 3.0 -- default speed (matches your request)
+local flyMin = 0.5
+local flyMax = 20
+local flyStep = 0.5
+
 local flyBodyVelocity
 local flyBodyGyro
 
-local function toggleFly()
+local function isMobile()
+	-- Consider touch devices as "mobile"
+	return UIS.TouchEnabled == true
+end
+
+local function isR15()
+	if Humanoid and Humanoid.RigType then
+		return Humanoid.RigType == Enum.HumanoidRigType.R15
+	end
+	-- fallback: if Humanoid has UpperTorso, assume R15
+	if Character then
+		return Character:FindFirstChild("UpperTorso") ~= nil
+	end
+	return false
+end
+
+local function showTempWarning(text, timeSec)
+	WarningLabel.Text = text
+	WarningLabel.BackgroundColor3 = THEMES.Discord.WarningBG_Other
+	WarningLabel.Visible = true
+	delay(timeSec or 2, function()
+		-- only hide if it wasn't overwritten by other systems
+		if WarningLabel.Text == text then
+			WarningLabel.Visible = false
+		end
+	end)
+end
+
+local function updateSpeedLabel()
+	SpeedLabel.Text = string.format("%.1f", flySpeed)
+end
+
+local function startFly()
 	if not Character then return end
-	flyEnabled = not flyEnabled
 	local hrp = Character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	if flyEnabled then
-		FlyButton.BackgroundColor3 = Color3.fromRGB(0,255,0)
+	-- create BodyVelocity & BodyGyro
+	flyBodyVelocity = Instance.new("BodyVelocity")
+	flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+	flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+	flyBodyVelocity.P = 1250
+	flyBodyVelocity.Parent = hrp
 
-		flyBodyVelocity = Instance.new("BodyVelocity")
-		flyBodyVelocity.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-		flyBodyVelocity.Velocity = Vector3.new(0,0,0)
-		flyBodyVelocity.Parent = hrp
+	flyBodyGyro = Instance.new("BodyGyro")
+	flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+	flyBodyGyro.P = 3000
+	flyBodyGyro.CFrame = hrp.CFrame
+	flyBodyGyro.Parent = hrp
+end
 
-		flyBodyGyro = Instance.new("BodyGyro")
-		flyBodyGyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
-		flyBodyGyro.CFrame = hrp.CFrame
-		flyBodyGyro.Parent = hrp
-	else
-		FlyButton.BackgroundColor3 = Color3.fromRGB(237,66,69)
-		if flyBodyVelocity then flyBodyVelocity:Destroy() flyBodyVelocity=nil end
-		if flyBodyGyro then flyBodyGyro:Destroy() flyBodyGyro=nil end
+local function stopFly()
+	if flyBodyVelocity then
+		pcall(function() flyBodyVelocity:Destroy() end)
+		flyBodyVelocity = nil
+	end
+	if flyBodyGyro then
+		pcall(function() flyBodyGyro:Destroy() end)
+		flyBodyGyro = nil
 	end
 end
 
-safeConnect(FlyButton.MouseButton1Click, toggleFly)
+local function toggleFly()
+	if not Character then return end
 
-safeConnect(RunService.Heartbeat, function()
+	-- Enforce mobile + R15
+	if not isMobile() then
+		showTempWarning("Fly disponível somente no celular (touch).", 2.5)
+		return
+	end
+	if not isR15() then
+		showTempWarning("Fly disponível somente para R15.", 2.5)
+		return
+	end
+
+	flyEnabled = not flyEnabled
+	if flyEnabled then
+		FlyButton.BackgroundColor3 = Color3.fromRGB(67, 181, 129) -- verde
+		startFly()
+	else
+		FlyButton.BackgroundColor3 = Color3.fromRGB(237, 66, 69) -- vermelho
+		stopFly()
+	end
+end
+
+-- Speed controls handlers
+safeConnect(SpeedPlus.MouseButton1Click, function()
+	flySpeed = math.min(flyMax, math.floor((flySpeed + flyStep) * 10 + 0.5) / 10)
+	updateSpeedLabel()
+end)
+safeConnect(SpeedMinus.MouseButton1Click, function()
+	flySpeed = math.max(flyMin, math.floor((flySpeed - flyStep) * 10 + 0.5) / 10)
+	updateSpeedLabel()
+end)
+
+-- Attach FlyButton (use Activated so it works for touch)
+safeConnect(FlyButton.Activated, toggleFly)
+
+-- Update fly each frame (uses Humanoid.MoveDirection and camera look for vertical)
+safeConnect(RunService.Heartbeat, function(dt)
 	if flyEnabled and Character and Character:FindFirstChild("HumanoidRootPart") then
-		local hrp = Character.HumanoidRootPart
-		local cam = workspace.CurrentCamera.CFrame
+		local hrp = Character:FindFirstChild("HumanoidRootPart")
+		local cam = workspace.CurrentCamera
+		if not hrp or not cam then return end
 
-		local moveVector = Vector3.new()
-		if UIS:IsKeyDown(Enum.KeyCode.W) then moveVector = moveVector + cam.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.S) then moveVector = moveVector - cam.LookVector end
-		if UIS:IsKeyDown(Enum.KeyCode.A) then moveVector = moveVector - cam.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.D) then moveVector = moveVector + cam.RightVector end
-		if UIS:IsKeyDown(Enum.KeyCode.Space) then moveVector = moveVector + Vector3.new(0,1,0) end
-		if UIS:IsKeyDown(Enum.KeyCode.LeftControl) then moveVector = moveVector - Vector3.new(0,1,0) end
-
-		if moveVector.Magnitude > 0 then
-			moveVector = moveVector.Unit * flySpeed
+		-- Movement direction from mobile virtual joystick
+		local moveDir = Vector3.new()
+		-- Use Humanoid.MoveDirection (works on mobile)
+		if Humanoid then
+			moveDir = Humanoid.MoveDirection or Vector3.new()
 		end
 
-		if flyBodyVelocity then flyBodyVelocity.Velocity = moveVector end
-		if flyBodyGyro then flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + cam.LookVector) end
+		-- If no horizontal input, still allow vertical via camera tilt when user touches/drag - but mobile doesn't have explicit vertical control
+		-- We'll derive vertical speed from camera pitch * magnitude of movement input
+		local camLook = cam.CFrame.LookVector
+		local verticalComponent = 0
+		local horizMag = Vector3.new(moveDir.X, 0, moveDir.Z).Magnitude
+
+		-- If player is moving (horizMag > 0) we allow ascending/descending by camera pitch
+		if horizMag > 0 then
+			-- camLook.Y is positive when looking up, negative when looking down
+			verticalComponent = camLook.Y * horizMag * flySpeed
+		end
+
+		-- Compose final velocity: horizontal follows Humanoid.MoveDirection, vertical from camera tilt
+		local finalVel = Vector3.new(0,0,0)
+		if moveDir.Magnitude > 0 then
+			local horizontal = Vector3.new(moveDir.X, 0, moveDir.Z).Unit * flySpeed
+			finalVel = Vector3.new(horizontal.X, verticalComponent, horizontal.Z)
+		else
+			-- no horizontal input: optionally hold vertical when the player drags camera + moves little -> keep minimal vertical
+			finalVel = Vector3.new(0, verticalComponent, 0)
+		end
+
+		-- Safety clamps to avoid NaN
+		if finalVel ~= finalVel then finalVel = Vector3.new(0,0,0) end
+
+		if flyBodyVelocity then
+			flyBodyVelocity.Velocity = finalVel
+		end
+		if flyBodyGyro then
+			-- orient to camera forward for nicer feel
+			flyBodyGyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camLook)
+		end
 	end
 end)
 
 -- === Drag GUI ===
-local dragInput,mousePos,framePos
-safeConnect(Frame.InputBegan,function(input)
+local dragInput, mousePos, framePos
+safeConnect(Frame.InputBegan, function(input)
 	if GUI.Enabled==false then return end
-	if input.UserInputType==Enum.UserInputType.MouseButton1 or input.UserInputType==Enum.UserInputType.Touch then
-		dragInput=input
-		mousePos=UIS:GetMouseLocation()
-		framePos=Frame.Position
-		safeConnect(input.Changed,function()
-			if dragInput and dragInput.UserInputState==Enum.UserInputState.End then dragInput=nil end
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragInput = input
+		mousePos = UIS:GetMouseLocation()
+		framePos = Frame.Position
+		safeConnect(input.Changed, function()
+			if dragInput and dragInput.UserInputState == Enum.UserInputState.End then
+				dragInput = nil
+			end
 		end)
 	end
 end)
 
-safeConnect(RunService.Heartbeat,function()
+safeConnect(RunService.Heartbeat, function()
 	if dragInput and GUI.Enabled then
-		local delta=UIS:GetMouseLocation()-mousePos
-		Frame.Position=UDim2.new(framePos.X.Scale,framePos.X.Offset+delta.X,framePos.Y.Scale,framePos.Y.Offset+delta.Y)
+		local delta = UIS:GetMouseLocation() - mousePos
+		Frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X, framePos.Y.Scale, framePos.Y.Offset + delta.Y)
 	end
 end)
 
-safeConnect(RunService.Heartbeat,checkCurrentModelStatus)
+safeConnect(RunService.Heartbeat, checkCurrentModelStatus)
 
 applyTheme()
+updateSpeedLabel()
 refreshHorseList()
-GUI.Enabled=true
+GUI.Enabled = true
