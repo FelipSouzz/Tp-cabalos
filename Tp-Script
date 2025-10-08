@@ -92,7 +92,7 @@ Frame.Parent = GUI
 
 TitleLabel.Size = UDim2.new(1, -40, 0, 30)
 TitleLabel.Position = UDim2.new(0, 10, 0, 5)
-TitleLabel.Text = "TP Horse"
+TitleLabel.Text = "TP Em Cavalos Feito por FELIPE"
 TitleLabel.Font = Enum.Font.SourceSansSemibold
 TitleLabel.TextSize = 20
 TitleLabel.BackgroundTransparency = 1
