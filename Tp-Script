@@ -173,27 +173,15 @@ RefreshButton.TextSize = 18
 RefreshButton.AutoButtonColor = false
 RefreshButton.Parent = Frame
 
--- Botão 0 (restaurar) com imagem
+-- Botão 0 (restaurar) -- começa oculto (alterado: 40x40, sem texto, cor será definida por applyTheme)
 RestoreButton0.Name = "RestoreButton0"
-RestoreButton0.Size = UDim2.new(0, 48, 0, 48)
-RestoreButton0.Position = UDim2.new(0.5, -24, 0.5, -24)
+RestoreButton0.Size = UDim2.new(0, 40, 0, 40) -- 40x40
+RestoreButton0.Position = UDim2.new(0.5, -20, 0.5, -20) -- centro quando aparecer (offset -20)
 RestoreButton0.AnchorPoint = Vector2.new(0.5, 0.5)
-RestoreButton0.Text = "" -- remove o texto
-RestoreButton0.AutoButtonColor = true -- permite hover efeito
-RestoreButton0.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- cor de fundo neutra para melhor contraste
+RestoreButton0.Text = "" -- sem texto
+RestoreButton0.AutoButtonColor = false
 RestoreButton0.Parent = GUI
 RestoreButton0.Visible = false
-
--- Adiciona imagem ao botão
-local RestoreImage = Instance.new("ImageLabel")
-RestoreImage.Name = "RestoreImage"
-RestoreImage.Parent = RestoreButton0
-RestoreImage.Size = UDim2.new(1, 0, 1, 0)
-RestoreImage.Position = UDim2.new(0, 0, 0, 0)
-RestoreImage.BackgroundTransparency = 1
-RestoreImage.Image = "rbxassetid://17435879065" -- ID da imagem
-RestoreImage.ScaleType = Enum.ScaleType.Fit -- mantém proporção da imagem
-RestoreImage.ZIndex = RestoreButton0.ZIndex + 1 -- garante que fique acima do botão
 
 local function centerButtons()
 	local spacing = 14
@@ -223,7 +211,7 @@ local function applyTheme()
 	RefreshButton.BackgroundColor3 = theme.ButtonRefresh
 	CloseButton.BackgroundColor3 = theme.ButtonClose
 	MinimizeButton.BackgroundColor3 = Color3.fromRGB(140, 140, 140) -- cinza
-	RestoreButton0.BackgroundColor3 = Color3.fromRGB(10, 10, 10) -- preto escuro
+	RestoreButton0.BackgroundColor3 = Color3.fromRGB(255,150,150) -- <-- vermelho claro
 	TeleportButton.TextColor3 = theme.TextPrimary
 	RefreshButton.TextColor3 = theme.TextPrimary
 	CloseButton.TextColor3 = theme.TextPrimary
@@ -789,7 +777,7 @@ safeConnect(RunService.Heartbeat, function()
 			local finalAbsX = anchorXPixels + desiredOffsetX
 			local finalAbsY = anchorYPixels + desiredOffsetY
 			-- ensure RestoreButton0.AbsoluteSize is available
-			local btnW, btnH = 48, 48
+			local btnW, btnH = 40, 40 -- <- padrão atualizado para 40x40
 			pcall(function()
 				if RestoreButton0.AbsoluteSize and RestoreButton0.AbsoluteSize.X and RestoreButton0.AbsoluteSize.Y then
 					btnW, btnH = RestoreButton0.AbsoluteSize.X, RestoreButton0.AbsoluteSize.Y
