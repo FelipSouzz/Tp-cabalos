@@ -173,17 +173,23 @@ RefreshButton.TextSize = 18
 RefreshButton.AutoButtonColor = false
 RefreshButton.Parent = Frame
 
--- Botão 0 (restaurar) -- começa oculto
+-- Botão 0 (restaurar) com imagem
 RestoreButton0.Name = "RestoreButton0"
 RestoreButton0.Size = UDim2.new(0, 48, 0, 48)
 RestoreButton0.Position = UDim2.new(0.5, -24, 0.5, -24) -- centro da tela quando aparecer
 RestoreButton0.AnchorPoint = Vector2.new(0.5, 0.5)
-RestoreButton0.Text = "0"
-RestoreButton0.Font = Enum.Font.SourceSansBold
-RestoreButton0.TextSize = 20
+RestoreButton0.Text = "" -- remove o texto
 RestoreButton0.AutoButtonColor = false
 RestoreButton0.Parent = GUI
 RestoreButton0.Visible = false
+
+-- Adiciona imagem ao botão
+local RestoreImage = Instance.new("ImageLabel")
+RestoreImage.Parent = RestoreButton0
+RestoreImage.Size = UDim2.new(1,0,1,0)
+RestoreImage.Position = UDim2.new(0,0,0,0)
+RestoreImage.BackgroundTransparency = 1
+RestoreImage.Image = "rbxassetid://17435879065" -- ID da imagem do Lundu
 
 local function centerButtons()
 	local spacing = 14
