@@ -1,8 +1,9 @@
 --[[
-  Script integrado: Teleport GUI + Fly GUI (Close minimiza; botão "O" restaura)
-  - Ao clicar em X (CloseButton) do TeleportGUI, ambas GUIs são apenas escondidas (Visible = false).
-  - Um botão "O" aparece na tela para restaurar as GUIs; quando as GUIs estão visíveis, o "O" desaparece.
-  - Compatível com celular (touch) e PC.
+  Script integrado: Teleport GUI + Fly GUI (fly sem botões X / -)
+  - Ao clicar em X (CloseButton) do TeleportGUI, ambos GUIs são minimizados (não destruídos).
+  - Adicionado botão "A" verde para restaurar as GUIs; aparece somente quando GUIs estão minimizadas.
+  - Botão A é movível/arrastável (funciona em PC e celular/touch).
+  - Mantive a lógica original do Teleport e Fly (não alterei Enabled, nem destruí nada).
 --]]
 
 -- === Teleport GUI (base) ===
@@ -306,7 +307,7 @@ local function refreshHorseList()
 	updateGUIStatus()
 end
 
--- === Fly GUI (integrado) ===
+-- === Fly GUI (integrado, sem botões X / -) ===
 local FlyGui = Instance.new("ScreenGui")
 FlyGui.Name = "FlyGUI"
 FlyGui.Parent = Player:WaitForChild("PlayerGui")
@@ -352,17 +353,16 @@ Fly_onof.BackgroundColor3 = Color3.fromRGB(255, 249, 74)
 Fly_onof.Position = UDim2.new(0.702823281, 0, 0.491228074, 0)
 Fly_onof.Size = UDim2.new(0, 56, 0, 28)
 Fly_onof.Font = Enum.Font.SourceSans
-Fly_onof.Text = "ON/OFF"
+Fly_onof.Text = "fly"
 Fly_onof.TextColor3 = Color3.fromRGB(0, 0, 0)
 Fly_onof.TextSize = 14.000
 
 Fly_TextLabel.Parent = Fly_Frame
-Fly_TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Fly_TextLabel.BackgroundTransparency = 1.000
-Fly_TextLabel.Position = UDim2.new(0.252631605, 0, 0, 0)
+Fly_TextLabel.BackgroundColor3 = Color3.fromRGB(242, 60, 255)
+Fly_TextLabel.Position = UDim2.new(0.469327301, 0, 0, 0)
 Fly_TextLabel.Size = UDim2.new(0, 100, 0, 28)
 Fly_TextLabel.Font = Enum.Font.SourceSans
-Fly_TextLabel.Text = "Fly Speed"
+Fly_TextLabel.Text = "FLY GUI V3"
 Fly_TextLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 Fly_TextLabel.TextScaled = true
 Fly_TextLabel.TextSize = 14.000
@@ -370,159 +370,457 @@ Fly_TextLabel.TextWrapped = true
 
 Fly_plus.Name = "plus"
 Fly_plus.Parent = Fly_Frame
-Fly_plus.BackgroundColor3 = Color3.fromRGB(123, 255, 123)
-Fly_plus.Position = UDim2.new(0.473684221, 0, 0.491228074, 0)
-Fly_plus.Size = UDim2.new(0, 29, 0, 28)
+Fly_plus.BackgroundColor3 = Color3.fromRGB(133, 145, 255)
+Fly_plus.Position = UDim2.new(0.231578946, 0, 0, 0)
+Fly_plus.Size = UDim2.new(0, 45, 0, 28)
 Fly_plus.Font = Enum.Font.SourceSans
 Fly_plus.Text = "+"
 Fly_plus.TextColor3 = Color3.fromRGB(0, 0, 0)
+Fly_plus.TextScaled = true
 Fly_plus.TextSize = 14.000
+Fly_plus.TextWrapped = true
 
+Fly_speedLabel.Name = "speed"
 Fly_speedLabel.Parent = Fly_Frame
-Fly_speedLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Fly_speedLabel.BackgroundTransparency = 1.000
-Fly_speedLabel.Position = UDim2.new(0.431578934, 0, 0, 0)
-Fly_speedLabel.Size = UDim2.new(0, 28, 0, 28)
+Fly_speedLabel.BackgroundColor3 = Color3.fromRGB(255, 85, 0)
+Fly_speedLabel.Position = UDim2.new(0.468421042, 0, 0.491228074, 0)
+Fly_speedLabel.Size = UDim2.new(0, 44, 0, 28)
 Fly_speedLabel.Font = Enum.Font.SourceSans
-Fly_speedLabel.Text = "300"
+Fly_speedLabel.Text = "1"
 Fly_speedLabel.TextColor3 = Color3.fromRGB(0, 0, 0)
 Fly_speedLabel.TextScaled = true
 Fly_speedLabel.TextSize = 14.000
 Fly_speedLabel.TextWrapped = true
 
-Fly_mine.Name = "minus"
+Fly_mine.Name = "mine"
 Fly_mine.Parent = Fly_Frame
-Fly_mine.BackgroundColor3 = Color3.fromRGB(123, 255, 123)
-Fly_mine.Position = UDim2.new(0.252631605, 0, 0.491228074, 0)
-Fly_mine.Size = UDim2.new(0, 29, 0, 28)
+Fly_mine.BackgroundColor3 = Color3.fromRGB(123, 255, 247)
+Fly_mine.Position = UDim2.new(0.231578946, 0, 0.491228074, 0)
+Fly_mine.Size = UDim2.new(0, 45, 0, 29)
 Fly_mine.Font = Enum.Font.SourceSans
 Fly_mine.Text = "-"
 Fly_mine.TextColor3 = Color3.fromRGB(0, 0, 0)
+Fly_mine.TextScaled = true
 Fly_mine.TextSize = 14.000
+Fly_mine.TextWrapped = true
 
--- === Minimize / Restore seguro ===
+-- variáveis do fly
+local speeds = 1
+local speaker = Player
+local chr = Player.Character
+local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+local nowe = false
 
--- função utilitária para obter referências (caso nomes diferentes)
-local function getTeleportFrame()
+-- enviar notificação (opcional)
+pcall(function()
+	game:GetService("StarterGui"):SetCore("SendNotification", {
+		Title = "FLY GUI V3";
+		Text = "BY XNEO";
+		Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
+	})
+end)
+
+Fly_Frame.Active = true
+Fly_Frame.Draggable = true
+
+-- Toggle fly
+Fly_onof.MouseButton1Down:Connect(function()
+	if nowe == true then
+		nowe = false
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,true)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,true)
+		speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.RunningNoPhysics)
+	else
+		nowe = true
+
+		for i = 1, speeds do
+			spawn(function()
+				local hb = game:GetService("RunService").Heartbeat
+				tpwalking = true
+				local chr = Player.Character
+				local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+				while tpwalking and hb:Wait() and chr and hum and hum.Parent do
+					if hum.MoveDirection.Magnitude > 0 then
+						chr:TranslateBy(hum.MoveDirection)
+					end
+				end
+			end)
+		end
+
+		if Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
+			Player.Character.Animate.Disabled = true
+		end
+
+		local Char = Player.Character
+		local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
+		if Hum then
+			for i,v in next, Hum:GetPlayingAnimationTracks() do
+				v:AdjustSpeed(0)
+			end
+		end
+
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.GettingUp,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Physics,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.PlatformStanding,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Running,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.RunningNoPhysics,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Seated,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.StrafingNoPhysics,false)
+		speaker.Character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Swimming,false)
+		speaker.Character.Humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+	end
+
+	-- R6 / R15 behaviour (mantive a lógica original, com nomes locais para speed)
+	if Player.Character:FindFirstChildOfClass("Humanoid").RigType == Enum.HumanoidRigType.R6 then
+		local plr = Player
+		local torso = plr.Character.Torso
+		local flying = true
+		local deb = true
+		local ctrl = {f = 0, b = 0, l = 0, r = 0}
+		local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+		local maxspeed = 50
+		local localSpeed = 0
+
+		local bg = Instance.new("BodyGyro", torso)
+		bg.P = 9e4
+		bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+		bg.cframe = torso.CFrame
+		local bv = Instance.new("BodyVelocity", torso)
+		bv.velocity = Vector3.new(0,0.1,0)
+		bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+		if nowe == true then
+			plr.Character.Humanoid.PlatformStand = true
+		end
+		while nowe == true or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 do
+			game:GetService("RunService").RenderStepped:Wait()
+
+			if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+				localSpeed = localSpeed+.5+(localSpeed/maxspeed)
+				if localSpeed > maxspeed then
+					localSpeed = maxspeed
+				end
+			elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and localSpeed ~= 0 then
+				localSpeed = localSpeed-1
+				if localSpeed < 0 then
+					localSpeed = 0
+				end
+			end
+			if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*localSpeed
+				lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+			elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and localSpeed ~= 0 then
+				bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*localSpeed
+			else
+				bv.velocity = Vector3.new(0,0,0)
+			end
+			--	game.Players.LocalPlayer.Character.Animate.Disabled = true
+			bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*localSpeed/maxspeed),0,0)
+		end
+		ctrl = {f = 0, b = 0, l = 0, r = 0}
+		lastctrl = {f = 0, b = 0, l = 0, r = 0}
+		localSpeed = 0
+		bg:Destroy()
+		bv:Destroy()
+		plr.Character.Humanoid.PlatformStand = false
+		game.Players.LocalPlayer.Character.Animate.Disabled = false
+		tpwalking = false
+
+
+
+
+	else
+	 local plr = game.Players.LocalPlayer
+	 local UpperTorso = plr.Character.UpperTorso
+	 local flying = true
+	 local deb = true
+	 local ctrl = {f = 0, b = 0, l = 0, r = 0}
+	 local lastctrl = {f = 0, b = 0, l = 0, r = 0}
+	 local maxspeed = 50
+	 local localSpeed = 0
+
+
+	 local bg = Instance.new("BodyGyro", UpperTorso)
+	 bg.P = 9e4
+	 bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+	 bg.cframe = UpperTorso.CFrame
+	 local bv = Instance.new("BodyVelocity", UpperTorso)
+	 bv.velocity = Vector3.new(0,0.1,0)
+	 bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+	 if nowe == true then
+	  plr.Character.Humanoid.PlatformStand = true
+	 end
+	 while nowe == true or game:GetService("Players").LocalPlayer.Character.Humanoid.Health == 0 do
+	  wait()
+
+	  if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
+	   localSpeed = localSpeed+.5+(localSpeed/maxspeed)
+	   if localSpeed > maxspeed then
+	    localSpeed = maxspeed
+	   end
+	  elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and localSpeed ~= 0 then
+	   localSpeed = localSpeed-1
+	   if localSpeed < 0 then
+	    localSpeed = 0
+	   end
+	  end
+	  if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
+	   bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*localSpeed
+	   lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
+	  elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and localSpeed ~= 0 then
+	   bv.velocity = ((game.Workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((game.Workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - game.Workspace.CurrentCamera.CoordinateFrame.p))*localSpeed
+	  else
+	   bv.velocity = Vector3.new(0,0,0)
+	  end
+
+	  bg.cframe = game.Workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*localSpeed/maxspeed),0,0)
+	 end
+	 ctrl = {f = 0, b = 0, l = 0, r = 0}
+	 lastctrl = {f = 0, b = 0, l = 0, r = 0}
+	 localSpeed = 0
+	 bg:Destroy()
+	 bv:Destroy()
+	 plr.Character.Humanoid.PlatformStand = false
+	 game.Players.LocalPlayer.Character.Animate.Disabled = false
+	 tpwalking = false
+
+
+
+	end
+
+
+
+
+
+end)
+
+-- == START OF MINIMIZE / RESTORE IMPLEMENTATION ==
+
+-- Create Restore "A" button (centered) that appears only when both GUIs are hidden.
+-- We'll control only Frame.Visible and Fly_Frame.Visible to avoid interfering with other logic.
+
+-- ensure PlayerGui exists
+local playerGui = Player:WaitForChild("PlayerGui")
+
+-- If a Restore GUI already exists from previous run, reuse it
+local restoreScreen = playerGui:FindFirstChild("RestoreGUI")
+local RestoreBtn, RestoreGui
+if restoreScreen and restoreScreen:IsA("ScreenGui") then
+	RestoreGui = restoreScreen
+	RestoreBtn = RestoreGui:FindFirstChild("RestoreA")
+else
+	RestoreGui = Instance.new("ScreenGui")
+	RestoreGui.Name = "RestoreGUI"
+	RestoreGui.ResetOnSpawn = false
+	RestoreGui.Parent = playerGui
+	RestoreGui.DisplayOrder = 1000
+
+	RestoreBtn = Instance.new("TextButton")
+	RestoreBtn.Name = "RestoreA"
+	RestoreBtn.Size = UDim2.new(0, 96, 0, 64)
+	RestoreBtn.Position = UDim2.new(0.5, -48, 0.5, -32) -- centered
+	RestoreBtn.AnchorPoint = Vector2.new(0.5, 0.5)
+	RestoreBtn.Text = "A"
+	RestoreBtn.Font = Enum.Font.SourceSansBold
+	RestoreBtn.TextSize = 36
+	RestoreBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0) -- verde
+	RestoreBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+	RestoreBtn.Parent = RestoreGui
+	RestoreBtn.Visible = false
+	RestoreBtn.AutoButtonColor = true
+	RestoreBtn.ZIndex = 1000
+end
+
+-- Helper refs
+local function getTeleportFrameRef()
+	-- prefer local Frame, else try to find in PlayerGui
 	if Frame and Frame:IsA("GuiObject") then return Frame end
-	local tg = Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("TeleportGUI")
+	local tg = playerGui:FindFirstChild("TeleportGUI")
 	if tg then return tg:FindFirstChild("TPFrame") end
 	return nil
 end
 
-local function getFlyFrame()
+local function getFlyFrameRef()
+	-- prefer local Fly_Frame, else try to find first frame in FlyGUI
 	if Fly_Frame and Fly_Frame:IsA("GuiObject") then return Fly_Frame end
-	local fg = Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("FlyGUI")
+	local fg = playerGui:FindFirstChild("FlyGUI")
 	if fg then
-		for _,c in ipairs(fg:GetChildren()) do
+		for _, c in ipairs(fg:GetChildren()) do
 			if c:IsA("GuiObject") then return c end
 		end
 	end
 	return nil
 end
 
-local TeleportFrameRef = getTeleportFrame()
-local FlyFrameRef = getFlyFrame()
+local TeleportFrameRef = getTeleportFrameRef()
+local FlyFrameRef = getFlyFrameRef()
 
-local existingRestore = Player.PlayerGui:FindFirstChild("RestoreGUI")
-if existingRestore then
-	RestoreGui = existingRestore
-	RestoreBtn = RestoreGui:FindFirstChildWhichIsA("TextButton")
-else
-	local RestoreGui = Instance.new("ScreenGui")
-	RestoreGui.Name = "RestoreGUI"
-	RestoreGui.ResetOnSpawn = false
-	RestoreGui.Parent = Player:WaitForChild("PlayerGui")
-	RestoreGui.DisplayOrder = 1000
-
-	local RestoreBtn = Instance.new("TextButton")
-	RestoreBtn.Name = "RestoreBtn"
-	RestoreBtn.Size = UDim2.new(0, 52, 0, 52)
-	RestoreBtn.AnchorPoint = Vector2.new(0, 1)
-	RestoreBtn.Position = UDim2.new(0, 10, 1, -10)
-	RestoreBtn.Text = "O"
-	RestoreBtn.Font = Enum.Font.SourceSansBold
-	RestoreBtn.TextSize = 28
-	RestoreBtn.BackgroundColor3 = Color3.fromRGB(120, 200, 120)
-	RestoreBtn.AutoButtonColor = true
-	RestoreBtn.Parent = RestoreGui
-
-	local corner = Instance.new("UICorner", RestoreBtn)
-	RestoreBtn.Visible = false
-
-	_G.__RestoreGui = RestoreGui
-	_G.__RestoreBtn = RestoreBtn
+-- Minimize (set Visible = false) — do not Destroy, do not change Enabled
+local function minimizeBoth()
+	TeleportFrameRef = TeleportFrameRef or getTeleportFrameRef()
+	FlyFrameRef = FlyFrameRef or getFlyFrameRef()
+	if TeleportFrameRef and TeleportFrameRef:IsA("GuiObject") then
+		TeleportFrameRef.Visible = false
+	end
+	if FlyFrameRef and FlyFrameRef:IsA("GuiObject") then
+		FlyFrameRef.Visible = false
+	end
+	if RestoreBtn then
+		RestoreBtn.Visible = true
+	end
 end
 
-local RestoreGui = _G.__RestoreGui or Player.PlayerGui:FindFirstChild("RestoreGUI")
-local RestoreBtn = _G.__RestoreBtn or (RestoreGui and RestoreGui:FindFirstChild("RestoreBtn"))
-
-local function refreshRefs()
-	TeleportFrameRef = getTeleportFrame()
-	FlyFrameRef = getFlyFrame()
-	RestoreGui = Player.PlayerGui:FindFirstChild("RestoreGUI")
-	RestoreBtn = RestoreGui and RestoreGui:FindFirstChild("RestoreBtn")
+-- Restore (set Visible = true)
+local function restoreBoth()
+	TeleportFrameRef = TeleportFrameRef or getTeleportFrameRef()
+	FlyFrameRef = FlyFrameRef or getFlyFrameRef()
+	if TeleportFrameRef and TeleportFrameRef:IsA("GuiObject") then
+		TeleportFrameRef.Visible = true
+	end
+	if FlyFrameRef and FlyFrameRef:IsA("GuiObject") then
+		FlyFrameRef.Visible = true
+	end
+	if RestoreBtn then
+		RestoreBtn.Visible = false
+	end
 end
-refreshRefs()
 
-local function updateRestoreButtonVisibility()
-	refreshRefs()
+-- Update restore button visibility depending on frames' Visible
+local function updateRestoreVisibility()
+	TeleportFrameRef = TeleportFrameRef or getTeleportFrameRef()
+	FlyFrameRef = FlyFrameRef or getFlyFrameRef()
 	local tpVisible = TeleportFrameRef and TeleportFrameRef.Visible
 	local flyVisible = FlyFrameRef and FlyFrameRef.Visible
 	if RestoreBtn then
+		-- show Restore only when BOTH are not visible
 		RestoreBtn.Visible = not (tpVisible or flyVisible)
 	end
 end
 
-local function minimizeBoth()
-	refreshRefs()
-	if TeleportFrameRef then TeleportFrameRef.Visible = false end
-	if FlyFrameRef then FlyFrameRef.Visible = false end
-	if RestoreBtn then RestoreBtn.Visible = true end
-end
-
-local function restoreBoth()
-	refreshRefs()
-	if TeleportFrameRef then TeleportFrameRef.Visible = true end
-	if FlyFrameRef then FlyFrameRef.Visible = true end
-	if RestoreBtn then RestoreBtn.Visible = false end
-end
-
+-- connect CloseButton to minimize
 if CloseButton then
+	-- disconnect existing connections if any (safe to rebind)
 	CloseButton.MouseButton1Click:Connect(function()
+		-- minimize instead of destroy
+		-- update refs in case GUIs were recreated externally
+		TeleportFrameRef = getTeleportFrameRef()
+		FlyFrameRef = getFlyFrameRef()
 		minimizeBoth()
 	end)
 end
 
+-- connect Restore button click to restore
 if RestoreBtn then
 	RestoreBtn.MouseButton1Click:Connect(function()
 		restoreBoth()
 	end)
 end
 
+-- Watch for Visible property changes on both frames (if/when available)
 local function attachVisibleWatcher(obj)
 	if not obj or not obj.GetPropertyChangedSignal then return end
-	local conn = obj:GetPropertyChangedSignal("Visible"):Connect(function()
-		updateRestoreButtonVisibility()
+	local ok, conn = pcall(function()
+		return obj:GetPropertyChangedSignal("Visible"):Connect(function()
+			updateRestoreVisibility()
+		end)
 	end)
-	table.insert(connections, conn)
+	if ok and conn then table.insert(connections, conn) end
 end
 
 attachVisibleWatcher(TeleportFrameRef)
 attachVisibleWatcher(FlyFrameRef)
 
+-- If frames are created later or refs missing, keep trying and update visibility regularly
 safeConnect(RunService.Heartbeat, function()
 	if not TeleportFrameRef or not FlyFrameRef or not RestoreBtn then
-		refreshRefs()
+		TeleportFrameRef = getTeleportFrameRef()
+		FlyFrameRef = getFlyFrameRef()
 		attachVisibleWatcher(TeleportFrameRef)
 		attachVisibleWatcher(FlyFrameRef)
 	end
-	updateRestoreButtonVisibility()
+	updateRestoreVisibility()
 end)
 
--- === Botões principais (Teleport) ===
+-- Make RestoreBtn draggable (works for mouse and touch)
+do
+	if RestoreBtn then
+		local dragging = false
+		local dragInput = nil
+		local dragStart = nil
+		local startPos = nil
+
+		local function update(input)
+			if not dragging or not input then return end
+			local delta = input.Position - dragStart
+			if startPos then
+				local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+				RestoreBtn.Position = newPos
+			end
+		end
+
+		RestoreBtn.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				dragInput = input
+				dragStart = input.Position
+				startPos = RestoreBtn.Position
+
+				input.Changed:Connect(function()
+					if input.UserInputState == Enum.UserInputState.End then
+						dragging = false
+						dragInput = nil
+					end
+				end)
+			end
+		end)
+
+		-- also support InputChanged for touch/mouse move
+		RestoreBtn.InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement then
+				dragInput = input
+			end
+		end)
+
+		safeConnect(RunService.Heartbeat, function()
+			if dragging and dragInput then
+				-- some input types provide Position directly
+				local pos = dragInput.Position
+				if pos then
+					local delta = pos - dragStart
+					local newPos = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+					RestoreBtn.Position = newPos
+				end
+			end
+		end)
+	end
+end
+
+-- == END OF MINIMIZE / RESTORE IMPLEMENTATION ==
+
+-- === Buttons behaviour: Teleport / Refresh binding ===
 TeleportButton.MouseButton1Click:Connect(teleportToNextModel)
 RefreshButton.MouseButton1Click:Connect(refreshHorseList)
 
--- Inicializa lista de cavalos
+-- Inicializa lista de cavalos (mantém lógica original)
 refreshHorseList()
+
+-- (o restante do seu script continua intacto)
