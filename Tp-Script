@@ -379,8 +379,8 @@ local tpwalking = false
 -- notify
 pcall(function()
 	game:GetService("StarterGui"):SetCore("SendNotification", {
-		Title = "FLY GUI V3";
-		Text = "BY XNEO";
+		Title = "Fly + Tp-Horse";
+		Text = "BY FELIPE";
 		Icon = "rbxthumb://type=Asset&id=5107182114&w=150&h=150"
 	})
 end)
