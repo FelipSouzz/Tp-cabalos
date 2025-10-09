@@ -1,4 +1,4 @@
--- Teleport + Fly integrados por FELIPE (com limite, snap e imagem no botão 0)
+-- Teleport + Fly integrados por FELIPE (com limites no botão 0 e sem X do Fly)
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -53,10 +53,9 @@ local WarningLabel = Instance.new("TextLabel")
 local TeleportButton = Instance.new("TextButton")
 local RefreshButton = Instance.new("TextButton")
 local CloseButton = Instance.new("TextButton")
-local MinimizeButton = Instance.new("TextButton")
-
--- Botão 0 (restaurar) usado para restaurar GUIs minimizadas — será um ImageButton
-local RestoreButton0 = Instance.new("ImageButton")
+local MinimizeButton = Instance.new("TextButton") -- botão cinza para minimizar
+-- Botão 0 (restaurar) usado para restaurar GUIs minimizadas
+local RestoreButton0 = Instance.new("TextButton")
 
 local FrameCorner = Instance.new("UICorner")
 local TeleportCorner = Instance.new("UICorner")
@@ -128,9 +127,10 @@ CloseButton.TextSize = 18
 CloseButton.AutoButtonColor = false
 CloseButton.Parent = Frame
 
+-- botão minimizar (cinza) ao lado esquerdo do Close
 MinimizeButton.Name = "MinimizeButton"
 MinimizeButton.Size = UDim2.new(0, 28, 0, 28)
-MinimizeButton.Position = UDim2.new(1, -70, 0, 6)
+MinimizeButton.Position = UDim2.new(1, -70, 0, 6) -- ao lado do X
 MinimizeButton.Text = "-"
 MinimizeButton.Font = Enum.Font.SourceSansBold
 MinimizeButton.TextSize = 18
@@ -173,12 +173,16 @@ RefreshButton.TextSize = 18
 RefreshButton.AutoButtonColor = false
 RefreshButton.Parent = Frame
 
--- configurar o botão 0 como imagem
+-- Botão 0 (restaurar) -- começa oculto
+RestoreButton0.Name = "RestoreButton0"
 RestoreButton0.Size = UDim2.new(0, 48, 0, 48)
-RestoreButton0.Position = UDim2.new(0.5, -24, 0.5, -24)
+RestoreButton0.Position = UDim2.new(0.5, -24, 0.5, -24) -- centro da tela quando aparecer
 RestoreButton0.AnchorPoint = Vector2.new(0.5, 0.5)
-RestoreButton0.BackgroundTransparency = 1
-RestoreButton0.Image = "rbxassetid://17435879065"  -- imagem “lundu” do link que você mandou
+RestoreButton0.Text = "0"
+RestoreButton0.Font = Enum.Font.SourceSansBold
+RestoreButton0.TextSize = 20
+RestoreButton0.AutoButtonColor = false
+RestoreButton0.Parent = GUI
 RestoreButton0.Visible = false
 
 local function centerButtons()
@@ -208,18 +212,45 @@ local function applyTheme()
 	TeleportButton.BackgroundColor3 = theme.ButtonTP
 	RefreshButton.BackgroundColor3 = theme.ButtonRefresh
 	CloseButton.BackgroundColor3 = theme.ButtonClose
-	MinimizeButton.BackgroundColor3 = Color3.fromRGB(140, 140, 140)
+	MinimizeButton.BackgroundColor3 = Color3.fromRGB(140, 140, 140) -- cinza
+	RestoreButton0.BackgroundColor3 = Color3.fromRGB(10, 10, 10) -- preto escuro
 	TeleportButton.TextColor3 = theme.TextPrimary
 	RefreshButton.TextColor3 = theme.TextPrimary
 	CloseButton.TextColor3 = theme.TextPrimary
 	MinimizeButton.TextColor3 = Color3.fromRGB(255,255,255)
-	-- o RestoreButton0 é imagem, não precisa de cor de fundo
+	RestoreButton0.TextColor3 = Color3.fromRGB(255,255,255)
+	local bCorner = theme.ButtonCorner
+	TeleportCorner.CornerRadius = bCorner
+	RefreshCorner.CornerRadius = bCorner
+	CloseCorner.CornerRadius = bCorner
+	MinimizeCorner.CornerRadius = bCorner
+	RestoreCorner.CornerRadius = UDim.new(0, 12)
+	local bStrokeColor = theme.StrokeColor
+	local bStrokeThickness = theme.StrokeThickness
+	local bStrokeTransparency = theme.StrokeTransparency
+	TeleportStroke.Color = bStrokeColor
+	TeleportStroke.Thickness = bStrokeThickness
+	TeleportStroke.Transparency = bStrokeTransparency
+	RefreshStroke.Color = bStrokeColor
+	RefreshStroke.Thickness = bStrokeThickness
+	RefreshStroke.Transparency = bStrokeTransparency
+	CloseStroke.Color = bStrokeColor
+	CloseStroke.Thickness = bStrokeThickness
+	CloseStroke.Transparency = bStrokeTransparency
+	MinimizeStroke.Color = bStrokeColor
+	MinimizeStroke.Thickness = bStrokeThickness
+	MinimizeStroke.Transparency = bStrokeTransparency
+	RestoreStroke.Color = bStrokeColor
+	RestoreStroke.Thickness = bStrokeThickness
+	RestoreStroke.Transparency = bStrokeTransparency
+
 	centerButtons()
 end
 
 -- ============================
 -- === Fly GUI & Lógica ====
 -- ============================
+-- renomeado para evitar conflitos
 local flyMain = Instance.new("ScreenGui")
 local flyFrame = Instance.new("Frame")
 local flyUp = Instance.new("TextButton")
@@ -229,6 +260,7 @@ local flyLabel = Instance.new("TextLabel")
 local flyPlus = Instance.new("TextButton")
 local flySpeedLabel = Instance.new("TextLabel")
 local flyMinus = Instance.new("TextButton")
+-- removed flyClose (X) per request
 local flyMini = Instance.new("TextButton")
 local flyMini2 = Instance.new("TextButton")
 
@@ -319,6 +351,8 @@ flyMinus.TextScaled = true
 flyMinus.TextSize = 14.000
 flyMinus.TextWrapped = true
 
+-- removed flyClose UI element (X) as requested
+
 flyMini.Name = "minimize"
 flyMini.Parent = flyFrame
 flyMini.BackgroundColor3 = Color3.fromRGB(192, 150, 230)
@@ -344,7 +378,7 @@ local speaker = Players.LocalPlayer
 local nowe = false
 local tpwalking = false
 
--- notificação
+-- notify
 pcall(function()
 	game:GetService("StarterGui"):SetCore("SendNotification", {
 		Title = "FLY GUI V3";
@@ -356,7 +390,7 @@ end)
 flyFrame.Active = true
 flyFrame.Draggable = true
 
--- Fly on/off
+-- Fly on/off logic (preserved from seu script, adaptado para variáveis renomeadas)
 flyOnOff.MouseButton1Down:Connect(function()
 	if nowe == true then
 		nowe = false
@@ -381,6 +415,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 		end
 	else
 		nowe = true
+		-- cria os tpwalking threads conforme speeds
 		for i = 1, fly_speeds do
 			spawn(function()
 				local hb = RunService.Heartbeat
@@ -394,6 +429,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 				end
 			end)
 		end
+		-- desativa animações para dar "fly"
 		local Char = Players.LocalPlayer.Character
 		if Char then
 			local Hum = Char:FindFirstChildOfClass("Humanoid") or Char:FindFirstChildOfClass("AnimationController")
@@ -424,6 +460,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 		end
 	end
 
+	-- Flight loop: R6 / R15 behavior roughly preserved
 	spawn(function()
 		local chr = Players.LocalPlayer.Character
 		if not chr then return end
@@ -447,6 +484,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 			local speed = 0
 			while nowe == true and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 do
 				RunService.RenderStepped:Wait()
+				-- not hooking keyboard here (same as original)
 				if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
 					speed = speed + .5 + (speed/maxspeed)
 					if speed > maxspeed then speed = maxspeed end
@@ -454,6 +492,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 					speed = speed - 1
 					if speed < 0 then speed = 0 end
 				end
+				-- movement calculation preserved
 				if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
 					bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed
 					lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
@@ -464,6 +503,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 				end
 				bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
 			end
+			-- cleanup
 			pcall(function() bg:Destroy() bv:Destroy() if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then plr.Character.Humanoid.PlatformStand = false end end)
 		else
 			local plr = Players.LocalPlayer
@@ -479,386 +519,4 @@ flyOnOff.MouseButton1Down:Connect(function()
 			if nowe == true and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then
 				plr.Character.Humanoid.PlatformStand = true
 			end
-			local ctrl = {f = 0, b = 0, l = 0, r = 0}
-			local lastctrl = {f = 0, b = 0, l = 0, r = 0}
-			local maxspeed = 50
-			local speed = 0
-			while nowe == true and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") and plr.Character:FindFirstChildOfClass("Humanoid").Health > 0 do
-				wait()
-				if ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0 then
-					speed = speed + .5 + (speed/maxspeed)
-					if speed > maxspeed then speed = maxspeed end
-				elseif not (ctrl.l + ctrl.r ~= 0 or ctrl.f + ctrl.b ~= 0) and speed ~= 0 then
-					speed = speed - 1
-					if speed < 0 then speed = 0 end
-				end
-				if (ctrl.l + ctrl.r) ~= 0 or (ctrl.f + ctrl.b) ~= 0 then
-					bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (ctrl.f+ctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(ctrl.l+ctrl.r,(ctrl.f+ctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed
-					lastctrl = {f = ctrl.f, b = ctrl.b, l = ctrl.l, r = ctrl.r}
-				elseif (ctrl.l + ctrl.r) == 0 and (ctrl.f + ctrl.b) == 0 and speed ~= 0 then
-					bv.velocity = ((workspace.CurrentCamera.CoordinateFrame.lookVector * (lastctrl.f+lastctrl.b)) + ((workspace.CurrentCamera.CoordinateFrame * CFrame.new(lastctrl.l+lastctrl.r,(lastctrl.f+lastctrl.b)*.2,0).p) - workspace.CurrentCamera.CoordinateFrame.p))*speed
-				else
-					bv.velocity = Vector3.new(0,0,0)
-				end
-				bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
-			end
-			pcall(function() bg:Destroy() bv:Destroy() if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then plr.Character.Humanoid.PlatformStand = false end end)
-		end
-	end)
-end)
-
--- up / down logic
-do
-	local tis
-	flyUp.MouseButton1Down:Connect(function()
-		tis = flyUp.MouseEnter:Connect(function()
-			while tis do
-				wait()
-				local hrp = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0,1,0) end
-			end
-		end)
-	end)
-	flyUp.MouseLeave:Connect(function()
-		if tis then tis:Disconnect(); tis = nil end
-	end)
-end
-
-do
-	local dis
-	flyDown.MouseButton1Down:Connect(function()
-		dis = flyDown.MouseEnter:Connect(function()
-			while dis do
-				wait()
-				local hrp = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-				if hrp then hrp.CFrame = hrp.CFrame * CFrame.new(0,-1,0) end
-			end
-		end)
-	end)
-	flyDown.MouseLeave:Connect(function()
-		if dis then dis:Disconnect(); dis = nil end
-	end)
-end
-
--- character respawn logic
-Players.LocalPlayer.CharacterAdded:Connect(function(char)
-	wait(0.7)
-	local hum = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-	if hum then
-		hum.PlatformStand = false
-		Players.LocalPlayer.Character.Animate.Disabled = false
-	end
-end)
-
--- plus / minus speed
-flyPlus.MouseButton1Down:Connect(function()
-	fly_speeds = fly_speeds + 1
-	flySpeedLabel.Text = tostring(fly_speeds)
-	if nowe == true then
-		tpwalking = false
-		for i = 1, fly_speeds do
-			spawn(function()
-				local hb = RunService.Heartbeat
-				tpwalking = true
-				local chr = Players.LocalPlayer.Character
-				local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-				while tpwalking and hb:Wait() and chr and hum and hum.Parent do
-					if hum.MoveDirection.Magnitude > 0 then
-						chr:TranslateBy(hum.MoveDirection)
-					end
-				end
-			end)
-		end
-	end
-end)
-
-flyMinus.MouseButton1Down:Connect(function()
-	if fly_speeds == 1 then
-		flySpeedLabel.Text = 'cannot be less than 1'
-		wait(1)
-		flySpeedLabel.Text = tostring(fly_speeds)
-	else
-		fly_speeds = fly_speeds - 1
-		flySpeedLabel.Text = tostring(fly_speeds)
-		if nowe == true then
-			tpwalking = false
-			for i = 1, fly_speeds do
-				spawn(function()
-					local hb = RunService.Heartbeat
-					tpwalking = true
-					local chr = Players.LocalPlayer.Character
-					local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
-					while tpwalking and hb:Wait() and chr and hum and hum.Parent do
-						if hum.MoveDirection.Magnitude > 0 then
-							chr:TranslateBy(hum.MoveDirection)
-						end
-					end
-				end)
-			end
-		end
-	end
-end)
-
--- fly minimize buttons
-flyMini.MouseButton1Click:Connect(function()
-	flyUp.Visible = false
-	flyDown.Visible = false
-	flyOnOff.Visible = false
-	flyPlus.Visible = false
-	flySpeedLabel.Visible = false
-	flyMinus.Visible = false
-	flyMini.Visible = false
-	flyMini2.Visible = true
-	flyFrame.BackgroundTransparency = 1
-end)
-
-flyMini2.MouseButton1Click:Connect(function()
-	flyUp.Visible = true
-	flyDown.Visible = true
-	flyOnOff.Visible = true
-	flyPlus.Visible = true
-	flySpeedLabel.Visible = true
-	flyMinus.Visible = true
-	flyMini.Visible = true
-	flyMini2.Visible = false
-	flyFrame.BackgroundTransparency = 0
-end)
-
--- Integração Minimize / Restore / Cleanup
-local function minimizeGUI()
-	Frame.Visible = false
-	flyFrame.Visible = false
-	RestoreButton0.Visible = true
-end
-
-local function restoreGUI()
-	Frame.Visible = true
-	flyFrame.Visible = true
-	RestoreButton0.Visible = false
-end
-
-safeConnect(MinimizeButton.MouseButton1Click, function()
-	minimizeGUI()
-end)
-
-safeConnect(RestoreButton0.MouseButton1Click, function()
-	restoreGUI()
-end)
-
-local function cleanup()
-	if GUI then GUI.Enabled = false end
-	for _,conn in pairs(connections) do
-		pcall(function() conn:Disconnect() end)
-	end
-	connections = {}
-	for _,obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then obj:Destroy() end
-	end
-	if GUI then GUI:Destroy() end
-	if flyMain and flyMain.Parent then flyMain:Destroy() end
-end
-
-safeConnect(CloseButton.MouseButton1Click, cleanup)
-
--- drag TP frame
-local dragInput, mousePos, framePos
-safeConnect(Frame.InputBegan, function(input)
-	if GUI.Enabled == false then return end
-	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-		dragInput = input
-		mousePos = UIS:GetMouseLocation()
-		framePos = Frame.Position
-		safeConnect(input.Changed, function()
-			if dragInput and dragInput.UserInputState == Enum.UserInputState.End then
-				dragInput = nil
-			end
-		end)
-	end
-end)
-
-safeConnect(RunService.Heartbeat, function()
-	if dragInput and GUI.Enabled and Frame.Visible then
-		local delta = UIS:GetMouseLocation() - mousePos
-		Frame.Position = UDim2.new(framePos.X.Scale, framePos.X.Offset + delta.X,
-			framePos.Y.Scale, framePos.Y.Offset + delta.Y)
-	end
-end)
-
--- drag & move botão 0 com limite e snap lateral
-do
-	local draggingRestore = false
-	local dragStartPos = nil
-	local restoreStartPos = nil
-	local dragInputObj = nil
-
-	RestoreButton0.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-			draggingRestore = true
-			dragStartPos = input.Position
-			restoreStartPos = RestoreButton0.Position
-			dragInputObj = input
-			input.Changed:Connect(function()
-				if input.UserInputState == Enum.UserInputState.End then
-					draggingRestore = false
-					-- snap lateral aqui
-					local screenW = workspace.CurrentCamera.ViewportSize.X
-					local mid = screenW / 2
-					local absX = RestoreButton0.AbsolutePosition.X + (RestoreButton0.AbsoluteSize.X / 2)
-					if absX < mid then
-						RestoreButton0:TweenPosition(UDim2.new(0, 0, RestoreButton0.Position.Y.Scale, RestoreButton0.Position.Y.Offset), "Out", "Sine", 0.2, true)
-					else
-						local targetX = screenW - RestoreButton0.AbsoluteSize.X
-						RestoreButton0:TweenPosition(UDim2.new(0, targetX, RestoreButton0.Position.Y.Scale, RestoreButton0.Position.Y.Offset), "Out", "Sine", 0.2, true)
-					end
-				end
-			end)
-		end
-	end)
-
-	RestoreButton0.InputChanged:Connect(function(input)
-		if (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-			dragInputObj = input
-		end
-	end)
-
-	safeConnect(UserInputService.InputChanged, function(input)
-		if draggingRestore and input == dragInputObj then
-			local delta = input.Position - dragStartPos
-			local newX = restoreStartPos.X.Offset + delta.X
-			local newY = restoreStartPos.Y.Offset + delta.Y
-			-- limite de tela
-			local vs = workspace.CurrentCamera.ViewportSize
-			local btnW = RestoreButton0.AbsoluteSize.X
-			local btnH = RestoreButton0.AbsoluteSize.Y
-			newX = math.clamp(newX, 0, vs.X - btnW)
-			newY = math.clamp(newY, 0, vs.Y - btnH)
-			RestoreButton0.Position = UDim2.new(restoreStartPos.X.Scale, newX, restoreStartPos.Y.Scale, newY)
-		end
-	end)
-end
-
--- TP / Horse logic
-local validModels = {}
-local currentModelIndex = 1
-
-local function findValidModels()
-	local islandsFolder = workspace:FindFirstChild("Islands")
-	if not islandsFolder then return {}, "Erro: Islands Missing" end
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then obj:Destroy() end
-	end
-	local playerIslandFolder = Character and Character.Parent
-	local islandContainer = nil
-	while playerIslandFolder and playerIslandFolder ~= islandsFolder and playerIslandFolder ~= workspace do
-		if playerIslandFolder.Parent == islandsFolder then islandContainer = playerIslandFolder break end
-		playerIslandFolder = playerIslandFolder.Parent
-	end
-	if not islandContainer then return {}, "Erro: Não na Ilha" end
-	local islandName = islandContainer.Name
-	local wildHorses = {}
-	local otherHorses = {}
-	local themeColors = THEMES.Discord
-	for _, descendant in ipairs(islandContainer:GetDescendants()) do
-		if descendant:IsA("Model") and descendant:FindFirstChildOfClass("Humanoid") and descendant:FindFirstChild("HumanoidRootPart") and descendant.Name:match("^%b{}$") then
-			local rootPart = descendant.HumanoidRootPart
-			local hasCaptureProgress = false
-			for _, element in ipairs(descendant:GetDescendants()) do
-				if element.Name == "CaptureProgress" then hasCaptureProgress=true break end
-			end
-			local highlight = Instance.new("Highlight")
-			highlight.Name = "TeleportHighlight"
-			highlight.FillColor = hasCaptureProgress and themeColors.WarningBG_Wild or themeColors.ButtonTP
-			highlight.OutlineColor = Color3.fromRGB(255,255,255)
-			highlight.FillTransparency = 0.5
-			highlight.OutlineTransparency = 0
-			highlight.Adornee = descendant
-			highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-			highlight.Parent = descendant
-			local horseData = {Model = descendant, RootPart = rootPart, IsWild = hasCaptureProgress}
-			if horseData.IsWild then
-				table.insert(wildHorses, horseData)
-			else
-				table.insert(otherHorses, horseData)
-			end
-		end
-	end
-	table.sort(wildHorses, function(a,b) return a.Model.Name < b.Model.Name end)
-	table.sort(otherHorses, function(a,b) return a.Model.Name < b.Model.Name end)
-	local allHorses = {}
-	for _,h in ipairs(wildHorses) do table.insert(allHorses, h) end
-	for _,h in ipairs(otherHorses) do table.insert(allHorses, h) end
-	return allHorses, islandName
-end
-
-local function checkCurrentModelStatus()
-	if GUI.Enabled == false or #validModels == 0 or currentModelIndex > #validModels then
-		WarningLabel.Visible = false
-		return
-	end
-	local modelInfo = validModels[currentModelIndex]
-	local currentModel = modelInfo.Model
-	local isWildNow = false
-	for _,element in ipairs(currentModel:GetDescendants()) do
-		if element.Name == "CaptureProgress" then
-			isWildNow = true
-			break
-		end
-	end
-	modelInfo.IsWild = isWildNow
-	if isWildNow then
-		WarningLabel.Text = "É CAVALO SELVAGEM (LIVE)"
-		WarningLabel.BackgroundColor3 = THEMES.Discord.WarningBG_Wild
-		WarningLabel.Visible = true
-	else
-		WarningLabel.Text = "NÃO É CAVALO SELVAGEM (LIVE)"
-		WarningLabel.BackgroundColor3 = THEMES.Discord.WarningBG_Other
-		WarningLabel.Visible = true
-	end
-end
-
-local function updateGUIStatus()
-	if #validModels == 0 then
-		StatusLabel.Text = "Nenhum cavalo encontrado"
-		WarningLabel.Visible = false
-		return
-	end
-	local modelInfo = validModels[currentModelIndex]
-	local pos = modelInfo.RootPart.Position
-	StatusLabel.Text = string.format("Cavalo %d de %d:\n%s\nPosição: %.1f, %.1f, %.1f", currentModelIndex, #validModels, modelInfo.Model.Name, pos.X, pos.Y, pos.Z)
-	checkCurrentModelStatus()
-end
-
-local function teleportToNextModel()
-	if GUI.Enabled == false or #validModels == 0 then return end
-	currentModelIndex = currentModelIndex + 1
-	if currentModelIndex > #validModels then
-		currentModelIndex = 1
-	end
-	local target = validModels[currentModelIndex]
-	if target and target.Model and target.RootPart and Character then
-		Character:PivotTo( CFrame.new(target.RootPart.Position + Vector3.new(0,3,0)) )
-		updateGUIStatus()
-	end
-end
-
-local function refreshHorseList()
-	if GUI.Enabled == false then return end
-	validModels, currentModelIndex = findValidModels()
-	currentModelIndex = 1
-	local islandName = "Desconhecida"
-	if validModels[1] and validModels[1].Model and validModels[1].Model.Parent then
-		islandName = validModels[1].Model.Parent.Name
-	end
-	IslandLabel.Text = "Ilha: " .. islandName
-	updateGUIStatus()
-end
-
-safeConnect(TeleportButton.MouseButton1Click, teleportToNextModel)
-safeConnect(RefreshButton.MouseButton1Click, refreshHorseList)
-
-safeConnect(RunService.Heartbeat, checkCurrentModelStatus)
-
-applyTheme()
-refreshHorseList()
-GUI.Enabled = true
-flyMain.Enabled = true
+			l
