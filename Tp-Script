@@ -1,4 +1,4 @@
--- Teleport + Fly integrados por FELIPE
+-- Teleport + Fly integrados por FELIPE (com limites no botão 0 e sem X do Fly)
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local UIS = game:GetService("UserInputService")
@@ -260,7 +260,7 @@ local flyLabel = Instance.new("TextLabel")
 local flyPlus = Instance.new("TextButton")
 local flySpeedLabel = Instance.new("TextLabel")
 local flyMinus = Instance.new("TextButton")
-local flyClose = Instance.new("TextButton")
+-- removed flyClose (X) per request
 local flyMini = Instance.new("TextButton")
 local flyMini2 = Instance.new("TextButton")
 
@@ -351,14 +351,7 @@ flyMinus.TextScaled = true
 flyMinus.TextSize = 14.000
 flyMinus.TextWrapped = true
 
-flyClose.Name = "Close"
-flyClose.Parent = flyFrame
-flyClose.BackgroundColor3 = Color3.fromRGB(225, 25, 0)
-flyClose.Font = "SourceSans"
-flyClose.Size = UDim2.new(0, 45, 0, 28)
-flyClose.Text = "X"
-flyClose.TextSize = 30
-flyClose.Position = UDim2.new(0, 0, -1, 27)
+-- removed flyClose UI element (X) as requested
 
 flyMini.Name = "minimize"
 flyMini.Parent = flyFrame
@@ -547,6 +540,7 @@ flyOnOff.MouseButton1Down:Connect(function()
 				else
 					bv.velocity = Vector3.new(0,0,0)
 				end
+
 				bg.cframe = workspace.CurrentCamera.CoordinateFrame * CFrame.Angles(-math.rad((ctrl.f+ctrl.b)*50*speed/maxspeed),0,0)
 			end
 			pcall(function() bg:Destroy() bv:Destroy() if plr.Character and plr.Character:FindFirstChildOfClass("Humanoid") then plr.Character.Humanoid.PlatformStand = false end end)
@@ -648,11 +642,7 @@ flyMinus.MouseButton1Down:Connect(function()
 	end
 end)
 
--- fly close/minimize buttons behavior
-flyClose.MouseButton1Click:Connect(function()
-	if flyMain then flyMain:Destroy() end
-end)
-
+-- fly minimize buttons behavior
 flyMini.MouseButton1Click:Connect(function()
 	flyUp.Visible = false
 	flyDown.Visible = false
@@ -663,7 +653,7 @@ flyMini.MouseButton1Click:Connect(function()
 	flyMini.Visible = false
 	flyMini2.Visible = true
 	flyFrame.BackgroundTransparency = 1
-	flyClose.Position = UDim2.new(0, 0, -1, 57)
+	-- flyClose removed so no position update here
 end)
 
 flyMini2.MouseButton1Click:Connect(function()
@@ -676,7 +666,6 @@ flyMini2.MouseButton1Click:Connect(function()
 	flyMini.Visible = true
 	flyMini2.Visible = false
 	flyFrame.BackgroundTransparency = 0
-	flyClose.Position = UDim2.new(0, 0, -1, 27)
 end)
 
 -- ============================
@@ -703,24 +692,23 @@ safeConnect(RestoreButton0.MouseButton1Click, function()
 	restoreGUI()
 end)
 
--- quando fechar o TP, fechamos também o fly (destroy)
+-- when TP close pressed -> cleanup everything
 local function cleanup()
 	if GUI then GUI.Enabled = false end
-	for _,conn in pairs(connections) do if conn and conn.Disconnect and conn.Connected ~= false then pcall(function() conn:Disconnect() end) end end
+	for _,conn in pairs(connections) do
+		if conn and conn.Disconnect and conn.Connected ~= false then
+			pcall(function() conn:Disconnect() end)
+		end
+	end
 	connections = {}
-	for _,obj in ipairs(workspace:GetDescendants()) do if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then obj:Destroy() end end
-	-- destruir GUIs
+	for _,obj in ipairs(workspace:GetDescendants()) do
+		if obj:IsA("Highlight") and obj.Name == "TeleportHighlight" then obj:Destroy() end
+	end
 	if GUI then GUI:Destroy() end
 	if flyMain and flyMain.Parent then flyMain:Destroy() end
 end
 
 safeConnect(CloseButton.MouseButton1Click, cleanup)
-
--- also close fly if its close button pressed (handled above) but ensure teleport cleaned
-flyClose.MouseButton1Click:Connect(function()
-	-- if you close only fly we keep TP; do nothing to TP
-	if flyMain then flyMain:Destroy() end
-end)
 
 -- === Drag GUI (TP Frame) ===
 local dragInput,mousePos,framePos
@@ -743,7 +731,10 @@ safeConnect(RunService.Heartbeat,function()
 	end
 end)
 
+-- ============================
 -- === Drag & Move botão 0 (restore) ao clicar e segurar no celular ===
+-- === WITH CLAMP TO VIEWPORT (limits) ===
+-- ============================
 local draggingRestoreInput = nil
 local restoreDragStartPos = nil
 local restoreButtonStartPos = nil
@@ -768,9 +759,41 @@ safeConnect(RunService.Heartbeat, function()
 		if not currentPos then currentPos = UIS:GetMouseLocation() end
 		if currentPos and restoreDragStartPos and restoreButtonStartPos then
 			local delta = currentPos - restoreDragStartPos
-			local newX = restoreButtonStartPos.X.Offset + delta.X
-			local newY = restoreButtonStartPos.Y.Offset + delta.Y
-			RestoreButton0.Position = UDim2.new(restoreButtonStartPos.X.Scale, newX, restoreButtonStartPos.Y.Scale, newY)
+			-- desired offsets in pixels relative to scale origin
+			local desiredOffsetX = restoreButtonStartPos.X.Offset + delta.X
+			local desiredOffsetY = restoreButtonStartPos.Y.Offset + delta.Y
+			-- compute viewport size and clamp range
+			local viewportX, viewportY = 0, 0
+			local ok = pcall(function()
+				local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+				if vs then viewportX, viewportY = vs.X, vs.Y end
+			end)
+			-- fallback to 1280x720 if cannot get
+			if viewportX == 0 or viewportY == 0 then
+				viewportX, viewportY = 1280, 720
+			end
+			-- compute absolute position (pixels) of the scale anchor
+			local anchorXPixels = viewportX * restoreButtonStartPos.X.Scale
+			local anchorYPixels = viewportY * restoreButtonStartPos.Y.Scale
+			-- compute final absolute desired position
+			local finalAbsX = anchorXPixels + desiredOffsetX
+			local finalAbsY = anchorYPixels + desiredOffsetY
+			-- ensure RestoreButton0.AbsoluteSize is available
+			local btnW, btnH = 48, 48
+			pcall(function()
+				if RestoreButton0.AbsoluteSize and RestoreButton0.AbsoluteSize.X and RestoreButton0.AbsoluteSize.Y then
+					btnW, btnH = RestoreButton0.AbsoluteSize.X, RestoreButton0.AbsoluteSize.Y
+				end
+			end)
+			-- clamp to screen (keep fully visible)
+			local minX, minY = 0, 0
+			local maxX, maxY = viewportX - btnW, viewportY - btnH
+			finalAbsX = math.clamp(finalAbsX, minX, maxX)
+			finalAbsY = math.clamp(finalAbsY, minY, maxY)
+			-- convert back to offsets keeping original scale component
+			local newOffsetX = finalAbsX - anchorXPixels
+			local newOffsetY = finalAbsY - anchorYPixels
+			RestoreButton0.Position = UDim2.new(restoreButtonStartPos.X.Scale, newOffsetX, restoreButtonStartPos.Y.Scale, newOffsetY)
 		end
 	end
 end)
@@ -779,7 +802,7 @@ RestoreButton0.InputEnded:Connect(function(input)
 	if draggingRestoreInput == input then draggingRestoreInput = nil end
 end)
 
--- Make sure Restore button hides when Frame visible
+-- Make sure Restore button hides when Frame or flyFrame visible
 safeConnect(RunService.Heartbeat, function()
 	if Frame.Visible or (flyFrame and flyFrame.Visible) then
 		if RestoreButton0.Visible then RestoreButton0.Visible = false end
@@ -886,7 +909,6 @@ end
 safeConnect(TeleportButton.MouseButton1Click,teleportToNextModel)
 safeConnect(RefreshButton.MouseButton1Click,refreshHorseList)
 
--- drag TP frame already handled above
 safeConnect(RunService.Heartbeat,checkCurrentModelStatus)
 
 -- initial setup
@@ -895,5 +917,4 @@ refreshHorseList()
 GUI.Enabled = true
 flyMain.Enabled = true -- mostra Fly gui automaticamente junto com TP
 
--- final: expose cleanup on script end if needed
--- (cleanup() já desconecta e destrói)
+-- end of script
