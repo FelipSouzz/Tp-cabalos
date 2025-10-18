@@ -1,0 +1,247 @@
+-- Mobile Finder + TP (filtrado por palavras-chave de "almas")
+-- Cole como LocalScript em StarterGui
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "MobileSoulFinder"
+gui.ResetOnSpawn = false
+
+-- Frame principal (móvel)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 340, 0, 380)
+frame.Position = UDim2.new(0.03, 0, 0.12, 0)
+frame.BackgroundColor3 = Color3.fromRGB(24,24,24)
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 36)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Finder Alma (filtrado)"
+title.Font = Enum.Font.SourceSansBold
+title.TextSize = 20
+title.TextColor3 = Color3.fromRGB(255,255,255)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Padding = UDim.new(0,10)
+
+-- Botões topo
+local refresh = Instance.new("TextButton", frame)
+refresh.Size = UDim2.new(0, 120, 0, 36)
+refresh.Position = UDim2.new(0, 12, 0, 40)
+refresh.BackgroundColor3 = Color3.fromRGB(135, 80, 255)
+refresh.Text = "Atualizar"
+refresh.Font = Enum.Font.SourceSansBold
+refresh.TextColor3 = Color3.new(1,1,1)
+refresh.TextScaled = true
+
+local close = Instance.new("TextButton", frame)
+close.Size = UDim2.new(0, 80, 0, 36)
+close.Position = UDim2.new(1, -92, 0, 40)
+close.BackgroundColor3 = Color3.fromRGB(90,90,90)
+close.Text = "Fechar"
+close.Font = Enum.Font.SourceSansBold
+close.TextColor3 = Color3.new(1,1,1)
+close.TextScaled = true
+
+local status = Instance.new("TextLabel", frame)
+status.Size = UDim2.new(1, -24, 0, 26)
+status.Position = UDim2.new(0, 12, 0, 84)
+status.BackgroundTransparency = 1
+status.Text = "Toque em Atualizar para procurar almas..."
+status.Font = Enum.Font.SourceSans
+status.TextColor3 = Color3.fromRGB(200,200,200)
+status.TextScaled = true
+status.TextXAlignment = Enum.TextXAlignment.Left
+
+-- ScrollingFrame para resultados
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, -24, 0, 260)
+scroll.Position = UDim2.new(0, 12, 0, 116)
+scroll.BackgroundColor3 = Color3.fromRGB(36,36,36)
+scroll.BorderSizePixel = 0
+scroll.ScrollBarThickness = 8
+scroll.CanvasSize = UDim2.new(0,0,0,0)
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.Padding = UDim.new(0,6)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+
+-- palavras-chave (em minúsculas). Frases com espaço funcionam também.
+local keywords = {
+	"alma",
+	"almas",
+	"soul",
+	"souls",
+	"orb",
+	"green",
+	"halloween",
+	"haunted island",
+	"haunted",
+	"ilha assombrada",
+	"hauntedisland", -- caso sem espaço
+}
+
+local function containsKeyword(text)
+	if not text then return false end
+	local lower = string.lower(text)
+	for _, kw in ipairs(keywords) do
+		-- usa plain find pra evitar padrões
+		if string.find(lower, kw, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+-- tenta extrair uma posição representativa do objeto
+local function getPos(obj)
+	-- BasePart direto
+	if obj:IsA("BasePart") then
+		return obj.Position, obj
+	end
+	-- Model: tenta PrimaryPart ou primeira BasePart
+	if obj:IsA("Model") then
+		if obj.PrimaryPart then
+			return obj.PrimaryPart.Position, obj.PrimaryPart
+		else
+			for _, d in ipairs(obj:GetDescendants()) do
+				if d:IsA("BasePart") then
+					return d.Position, d
+				end
+			end
+		end
+	end
+	-- Attachment
+	if obj:IsA("Attachment") then
+		local ok, wp = pcall(function() return obj.WorldPosition end)
+		if ok and wp then
+			return wp, obj
+		end
+	end
+	-- emitters/GUI com Parent sendo Part
+	if obj.Parent and obj.Parent:IsA("BasePart") then
+		return obj.Parent.Position, obj.Parent
+	end
+	-- SurfaceGui/BillboardGui ligado a uma BasePart
+	if (obj:IsA("SurfaceGui") or obj:IsA("BillboardGui")) and obj.Parent and obj.Parent:IsA("BasePart") then
+		return obj.Parent.Position, obj.Parent
+	end
+	return nil
+end
+
+-- limpa lista visual
+local function clearList()
+	for _, c in ipairs(scroll:GetChildren()) do
+		if c:IsA("TextButton") or c:IsA("TextLabel") then
+			c:Destroy()
+		end
+	end
+end
+
+-- teleporte simples com cooldown
+local teleportCooldown = false
+local function teleportTo(pos)
+	if teleportCooldown then return false, "Cooldown..." end
+	local char = player.Character or player.CharacterAdded:Wait()
+	local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+	if not hrp then
+		return false, "Personagem não pronto"
+	end
+	teleportCooldown = true
+	local ok, err = pcall(function()
+		hrp.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
+	end)
+	task.delay(0.6, function() teleportCooldown = false end)
+	if not ok then
+		return false, tostring(err)
+	end
+	return true, "Teleportado!"
+end
+
+-- cria botão de resultado
+local function makeResult(fullName, className, pos)
+	local btn = Instance.new("TextButton", scroll)
+	btn.Size = UDim2.new(1, -8, 0, 48)
+	btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
+	btn.AutoButtonColor = true
+	btn.TextColor3 = Color3.fromRGB(240,240,240)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 14
+	btn.TextXAlignment = Enum.TextXAlignment.Left
+	btn.TextWrapped = true
+	btn.Text = (" %s  —  (%s)"):format(fullName, className)
+
+	-- ação ao tocar: teleportar
+	btn.TouchTap:Connect(function() -- TouchTap é melhor para mobile quando disponível
+		status.Text = "Teleportando..."
+		local ok, msg = teleportTo(pos)
+		status.Text = msg
+	end)
+	-- fallback para MouseButton1Click (para casos desktop)
+	btn.MouseButton1Click:Connect(function()
+		status.Text = "Teleportando..."
+		local ok, msg = teleportTo(pos)
+		status.Text = msg
+	end)
+end
+
+-- popula lista filtrando por palavras-chave
+local function populate()
+	clearList()
+	status.Text = "🔎 Procurando objetos que parecem almas..."
+	local found = 0
+	local added = {}
+	for _, obj in ipairs(workspace:GetDescendants()) do
+		-- checa nome e fullname
+		local okName = containsKeyword(obj.Name) or containsKeyword(obj:GetFullName())
+		-- também checa ClassName (alguns objetos usam "Orb", "Particle", etc)
+		local okClass = containsKeyword(obj.ClassName)
+		if okName or okClass then
+			local pos, ref = getPos(obj)
+			if pos then
+				-- evita duplicatas próximas (mesma posição arredondada + nome)
+				local key = obj:GetFullName() .. ":" .. tostring(math.floor(pos.X)) .. "," .. tostring(math.floor(pos.Y)) .. "," .. tostring(math.floor(pos.Z))
+				if not added[key] then
+					added[key] = true
+					found = found + 1
+					makeResult(obj:GetFullName(), obj.ClassName, pos)
+					if found >= 300 then
+						-- limite pra não travar
+						local lbl = Instance.new("TextLabel", scroll)
+						lbl.Size = UDim2.new(1, -8, 0, 40)
+						lbl.BackgroundTransparency = 1
+						lbl.Text = "⚠️ Limite atingido (300). Refine a busca se necessário."
+						lbl.Font = Enum.Font.SourceSans
+						lbl.TextColor3 = Color3.fromRGB(255,150,150)
+						lbl.TextScaled = true
+						break
+					end
+				end
+			end
+		end
+	end
+
+	if found == 0 then
+		local lbl = Instance.new("TextLabel", scroll)
+		lbl.Size = UDim2.new(1, -8, 0, 40)
+		lbl.BackgroundTransparency = 1
+		lbl.Text = "Nenhuma 'alma' encontrada com as palavras-chave."
+		lbl.Font = Enum.Font.SourceSans
+		lbl.TextColor3 = Color3.fromRGB(220,220,220)
+		lbl.TextScaled = true
+	end
+
+	-- ajusta CanvasSize
+	task.wait(0.03)
+	scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+	status.Text = ("Encontrados: %d itens. Toque para teleportar."):format(found)
+end
+
+-- Conexões
+refresh.MouseButton1Click:Connect(function() populate() end)
+close.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+-- Auto-run na abertura
+task.delay(0.15, function() populate() end)
