@@ -1,171 +1,218 @@
---[[ 
-📍 GUI Mobile: Teleporte até objetos com botão de interagir (ProximityPrompt)
-Feito para funcionar no celular (móvel e touch)
-Coloque como LocalScript em StarterGui
---]]
+-- Soul Teleport (melhorado, mobile-friendly, com diagnóstico)
+-- LocalScript -> StarterGui
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 
--- cria GUI principal
-local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
-gui.Name = "TeleportPromptFinder"
+local function lower(s) return tostring(s):lower() end
+local function isSoulModel(model)
+    if not model or not model:IsA("Model") then return false end
+    local attr1 = model:GetAttribute("itemName")
+    local attr2 = model:GetAttribute("npcName")
+    if attr1 and lower(attr1):find("soul",1,true) then return true end
+    if attr2 and lower(attr2):find("soul",1,true) then return true end
+    -- às vezes o nome do model contém "soul"
+    if lower(model.Name):find("soul",1,true) then return true end
+    return false
+end
+
+local function getModelPosition(model)
+    -- tenta PrimaryPart
+    if model.PrimaryPart and model.PrimaryPart:IsA("BasePart") then
+        return model.PrimaryPart.Position, model.PrimaryPart
+    end
+    -- tenta HumanoidRootPart
+    local hr = model:FindFirstChild("HumanoidRootPart")
+    if hr and hr:IsA("BasePart") then return hr.Position, hr end
+    -- procura qualquer BasePart dentro do model
+    for _,d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") then
+            return d.Position, d
+        end
+    end
+    return nil, nil
+end
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "SoulTP_GUI"
 gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
 
--- frame principal (arrastável e móvel)
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.new(0, 340, 0, 380)
-frame.Position = UDim2.new(0.03, 0, 0.15, 0)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.Active = true
-frame.Draggable = true
+local main = Instance.new("Frame", gui)
+main.Size = UDim2.new(0, 360, 0, 420)
+main.Position = UDim2.new(0.03,0,0.12,0)
+main.BackgroundColor3 = Color3.fromRGB(28,28,28)
+main.Active = true
+main.Draggable = true
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.new(1, 0, 0, 36)
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(1,0,0,36)
 title.BackgroundTransparency = 1
-title.Text = "🔍 Interagir Finder"
+title.Text = "Soul Finder + TP"
 title.Font = Enum.Font.SourceSansBold
-title.TextSize = 22
+title.TextSize = 20
 title.TextColor3 = Color3.new(1,1,1)
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Position = UDim2.new(0,8,0,0)
 
-local refresh = Instance.new("TextButton", frame)
-refresh.Size = UDim2.new(0, 120, 0, 36)
-refresh.Position = UDim2.new(0, 10, 0, 40)
-refresh.BackgroundColor3 = Color3.fromRGB(100, 70, 255)
-refresh.Text = "Atualizar"
-refresh.Font = Enum.Font.SourceSansBold
-refresh.TextColor3 = Color3.new(1,1,1)
-refresh.TextScaled = true
+local refreshBtn = Instance.new("TextButton", main)
+refreshBtn.Size = UDim2.new(0,140,0,36)
+refreshBtn.Position = UDim2.new(0,8,0,44)
+refreshBtn.Text = "Atualizar"
+refreshBtn.Font = Enum.Font.SourceSansBold
+refreshBtn.TextScaled = true
+refreshBtn.BackgroundColor3 = Color3.fromRGB(120,80,255)
+refreshBtn.TextColor3 = Color3.new(1,1,1)
 
-local close = Instance.new("TextButton", frame)
-close.Size = UDim2.new(0, 80, 0, 36)
-close.Position = UDim2.new(1, -90, 0, 40)
-close.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
-close.Text = "Fechar"
-close.Font = Enum.Font.SourceSansBold
-close.TextColor3 = Color3.new(1,1,1)
-close.TextScaled = true
+local nearestBtn = Instance.new("TextButton", main)
+nearestBtn.Size = UDim2.new(0,180,0,36)
+nearestBtn.Position = UDim2.new(1,-188,0,44)
+nearestBtn.Text = "Ir ao mais próximo"
+nearestBtn.Font = Enum.Font.SourceSansBold
+nearestBtn.TextScaled = true
+nearestBtn.BackgroundColor3 = Color3.fromRGB(90,90,90)
+nearestBtn.TextColor3 = Color3.new(1,1,1)
 
-local status = Instance.new("TextLabel", frame)
-status.Size = UDim2.new(1, -20, 0, 26)
-status.Position = UDim2.new(0, 10, 0, 84)
+local status = Instance.new("TextLabel", main)
+status.Size = UDim2.new(1,-16,0,28)
+status.Position = UDim2.new(0,8,0,88)
 status.BackgroundTransparency = 1
-status.Text = "Toque em Atualizar para procurar interações..."
-status.Font = Enum.Font.SourceSans
-status.TextColor3 = Color3.fromRGB(200,200,200)
-status.TextScaled = true
+status.Text = "Pronto. Toque em Atualizar."
 status.TextXAlignment = Enum.TextXAlignment.Left
+status.TextColor3 = Color3.fromRGB(200,200,200)
+status.Font = Enum.Font.SourceSans
+status.TextScaled = true
 
-local scroll = Instance.new("ScrollingFrame", frame)
-scroll.Size = UDim2.new(1, -20, 0, 260)
-scroll.Position = UDim2.new(0, 10, 0, 116)
-scroll.BackgroundColor3 = Color3.fromRGB(40,40,40)
-scroll.BorderSizePixel = 0
+local scroll = Instance.new("ScrollingFrame", main)
+scroll.Size = UDim2.new(1,-16,0,280)
+scroll.Position = UDim2.new(0,8,0,124)
+scroll.BackgroundTransparency = 1
 scroll.ScrollBarThickness = 8
-scroll.CanvasSize = UDim2.new(0,0,0,0)
-
 local layout = Instance.new("UIListLayout", scroll)
 layout.Padding = UDim.new(0,6)
-layout.SortOrder = Enum.SortOrder.LayoutOrder
 
--- teleport cooldown
 local teleportCooldown = false
-
-local function teleportTo(pos)
-	if teleportCooldown then return false, "Espere um pouco..." end
-	local char = player.Character or player.CharacterAdded:Wait()
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if not hrp then return false, "Sem HumanoidRootPart" end
-
-	teleportCooldown = true
-	local ok, err = pcall(function()
-		hrp.CFrame = CFrame.new(pos + Vector3.new(0, 3, 0))
-	end)
-	task.delay(0.6, function() teleportCooldown = false end)
-
-	if not ok then
-		return false, err
-	end
-	return true, "Teleportado!"
+local function tryTeleportToPosition(pos)
+    if teleportCooldown then return false, "Cooldown" end
+    local char = player.Character or player.CharacterAdded:Wait()
+    local hrp = char:FindFirstChild("HumanoidRootPart") or char:FindFirstChildWhichIsA("BasePart")
+    if not hrp then return false, "Sem HRP" end
+    teleportCooldown = true
+    local ok, err = pcall(function()
+        hrp.CFrame = CFrame.new(pos + Vector3.new(0,3,0))
+    end)
+    task.delay(0.7, function() teleportCooldown = false end)
+    if not ok then return false, tostring(err) end
+    return true, "Teleportado"
 end
 
 local function clearList()
-	for _, c in ipairs(scroll:GetChildren()) do
-		if c:IsA("TextButton") or c:IsA("TextLabel") then
-			c:Destroy()
-		end
-	end
+    for _,c in ipairs(scroll:GetChildren()) do
+        if c:IsA("TextButton") or c:IsA("TextLabel") then c:Destroy() end
+    end
 end
 
-local function addItemButton(obj, prompt)
-	local btn = Instance.new("TextButton", scroll)
-	btn.Size = UDim2.new(1, -8, 0, 48)
-	btn.BackgroundColor3 = Color3.fromRGB(60,60,60)
-	btn.TextColor3 = Color3.fromRGB(240,240,240)
-	btn.Font = Enum.Font.SourceSansBold
-	btn.TextSize = 14
-	btn.TextXAlignment = Enum.TextXAlignment.Left
-	btn.TextWrapped = true
+local function populateList()
+    clearList()
+    status.Text = "Buscando modelos com attribute itemName/npcName = Soul..."
+    local found = {}
+    local count = 0
+    for _,m in ipairs(workspace:GetDescendants()) do
+        if m:IsA("Model") and isSoulModel(m) then
+            local pos, part = getModelPosition(m)
+            if pos then
+                count = count + 1
+                table.insert(found, {model = m, pos = pos, part = part})
+            end
+        end
+    end
 
-	local promptText = prompt.ObjectText ~= "" and prompt.ObjectText or "Interagir"
-	local actionText = prompt.ActionText ~= "" and prompt.ActionText or ""
-	local showName = obj.Name or "Objeto"
-	btn.Text = string.format(" %s — %s (%s)", showName, promptText, actionText)
+    if count == 0 then
+        local lbl = Instance.new("TextLabel", scroll)
+        lbl.Size = UDim2.new(1,0,0,36)
+        lbl.BackgroundTransparency = 1
+        lbl.Text = "Nenhuma alma encontrada no Workspace."
+        lbl.Font = Enum.Font.SourceSans
+        lbl.TextColor3 = Color3.fromRGB(255,180,180)
+        lbl.TextScaled = true
+        status.Text = "Encontrados: 0"
+        return found
+    end
 
-	local pos
-	if obj:IsA("BasePart") then
-		pos = obj.Position
-	elseif obj:IsA("Model") then
-		pos = (obj.PrimaryPart and obj.PrimaryPart.Position) or nil
-	elseif obj.Parent and obj.Parent:IsA("BasePart") then
-		pos = obj.Parent.Position
-	end
+    -- ordenar por nome (opcional) ou manter
+    for i,info in ipairs(found) do
+        local btn = Instance.new("TextButton", scroll)
+        btn.Size = UDim2.new(1,-4,0,36)
+        btn.Position = UDim2.new(0,2,0,0)
+        btn.BackgroundColor3 = Color3.fromRGB(60,60,80)
+        btn.AutoButtonColor = true
+        btn.Font = Enum.Font.SourceSansBold
+        btn.TextSize = 14
+        btn.TextXAlignment = Enum.TextXAlignment.Left
+        local displayName = info.model:GetFullName() or info.model.Name
+        -- mostra nome do model e distância (se personagem tiver HRP)
+        local distStr = ""
+        local char = player.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local d = (char.HumanoidRootPart.Position - info.pos).Magnitude
+            distStr = string.format(" (%.1fm)", d)
+        end
+        btn.Text = " "..tostring(displayName)..distStr
+        btn.TextColor3 = Color3.new(1,1,1)
+        btn.TextWrapped = false
 
-	if pos then
-		btn.MouseButton1Click:Connect(function()
-			status.Text = "Teleportando..."
-			local ok, msg = teleportTo(pos)
-			status.Text = msg
-		end)
-		btn.TouchTap:Connect(function()
-			status.Text = "Teleportando..."
-			local ok, msg = teleportTo(pos)
-			status.Text = msg
-		end)
-	else
-		btn.Text = btn.Text .. " (sem posição)"
-	end
+        btn.Activated:Connect(function()
+            status.Text = "Tentando teleportar..."
+            local ok,msg = tryTeleportToPosition(info.pos)
+            status.Text = msg
+        end)
+    end
+
+    task.wait(0.03)
+    scroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y + 8)
+    status.Text = ("Encontradas: %d almas. Toque para TP."):format(#found)
+    return found
 end
 
-local function findPrompts()
-	clearList()
-	status.Text = "Procurando objetos com botão de interagir..."
-	local count = 0
+local cachedFound = {}
 
-	for _, obj in ipairs(workspace:GetDescendants()) do
-		if obj:IsA("ProximityPrompt") then
-			count += 1
-			addItemButton(obj.Parent or obj, obj)
-		end
-	end
+refreshBtn.Activated:Connect(function()
+    cachedFound = populateList()
+end)
 
-	if count == 0 then
-		local lbl = Instance.new("TextLabel", scroll)
-		lbl.Size = UDim2.new(1, -8, 0, 40)
-		lbl.BackgroundTransparency = 1
-		lbl.Text = "Nenhum objeto com botão de interagir encontrado."
-		lbl.Font = Enum.Font.SourceSans
-		lbl.TextColor3 = Color3.fromRGB(255,255,255)
-		lbl.TextScaled = true
-	end
+nearestBtn.Activated:Connect(function()
+    status.Text = "Procurando alma mais próxima..."
+    local char = player.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then
+        status.Text = "Personagem não pronto."
+        return
+    end
+    local myPos = char.HumanoidRootPart.Position
+    local best, bestDist, bestPos
+    for _,m in ipairs(workspace:GetDescendants()) do
+        if m:IsA("Model") and isSoulModel(m) then
+            local pos, part = getModelPosition(m)
+            if pos then
+                local d = (pos - myPos).Magnitude
+                if not bestDist or d < bestDist then
+                    bestDist = d
+                    best = m
+                    bestPos = pos
+                end
+            end
+        end
+    end
+    if bestPos then
+        local ok,msg = tryTeleportToPosition(bestPos)
+        status.Text = msg
+    else
+        status.Text = "Nenhuma alma próxima encontrada."
+    end
+end)
 
-	task.wait(0.05)
-	scroll.CanvasSize = UDim2.new(0,0,0,layout.AbsoluteContentSize.Y + 12)
-	status.Text = string.format("Encontrados: %d objetos interagíveis.", count)
-end
-
-refresh.MouseButton1Click:Connect(findPrompts)
-close.MouseButton1Click:Connect(function() gui:Destroy() end)
-
-task.delay(0.2, findPrompts)
+-- inicializa automaticamente
+task.delay(0.12, function()
+    cachedFound = populateList()
+end)
