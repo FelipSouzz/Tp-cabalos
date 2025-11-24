@@ -1,7 +1,31 @@
+-- SERVIÇOS
 local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Rep = game:GetService("ReplicatedStorage")
 
+-- JOGADOR
+local LP = Players.LocalPlayer
+
+-- FLAGS
 local autoCollect = false
+local antiTaze = false
+local antiDeath = false
+local arrestAura = false
 
+-- VARIÁVEIS
+local lastDeathPosition = nil
+local lastPosition = nil
+local playerHumanoid = nil
+
+-- VERIFICAÇÃO DE TAB
+if not Window then return end
+
+local MiscTab = Window:Tab({
+    Title = "Misc",
+    Icon = "settings"
+})
+
+-- TOGGLES
 MiscTab:Toggle({
     Title = "Auto Collect Dropped Item",
     Default = false,
@@ -18,94 +42,13 @@ MiscTab:Toggle({
     end
 })
 
-local LP = game.Players.LocalPlayer
-
-local playerHumanoid = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-if playerHumanoid then
-    playerHumanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if antiTaze then
-            playerHumanoid.WalkSpeed = 16
-        end
-    end)
-end
-
-LP.CharacterAdded:Connect(function(char)
-    playerHumanoid = char:WaitForChild("Humanoid")
-    playerHumanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-        if antiTaze then
-            playerHumanoid.WalkSpeed = 16
-        end
-    end)
-end)
-
-local itemsToCollect = {
-    "Key card",
-    "M9"
-}
-
-RunService.RenderStepped:Connect(function()
-    if not autoCollect then return end
-    local char = LP.Character
-    if not char then return end
-    local root = char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
-
-    for _, itemName in ipairs(itemsToCollect) do
-        local item = workspace:FindFirstChild(itemName)
-        if item then
-            local targetPos = item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position or item.Position
-            if (root.Position - targetPos).Magnitude <= 10 then
-                local args = {[1] = item}
-                Rep.Remotes.GiverPressed:FireServer(unpack(args))
-            end
-        end
-    end
-end)
-
-local Players = game:GetService("Players")
-local LP = Players.LocalPlayer
-local Rep = game:GetService("ReplicatedStorage")
-
-local antiDeath = false
-local lastDeathPosition = nil
-local arrestAura = false
-
 MiscTab:Toggle({
     Title = "Anti-Death",
     Default = false,
     Callback = function(state)
         antiDeath = state
-        if antiDeath and LP.Character and LP.Character:FindFirstChild("Humanoid") then
-            local hum = LP.Character:FindFirstChild("Humanoid")
-            local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
-            if hum and hrp then
-                lastDeathPosition = hrp.CFrame
-            end
-        end
     end
 })
-
-local function trackDeath(character)
-    local hum = character:WaitForChild("Humanoid")
-    local hrp = character:WaitForChild("HumanoidRootPart")
-    
-    hum.Died:Connect(function()
-        if antiDeath then
-            lastDeathPosition = hrp.CFrame
-        end
-    end)
-end
-
-LP.CharacterAdded:Connect(function(char)
-    trackDeath(char)
-    if antiDeath then
-        local hrp = char:WaitForChild("HumanoidRootPart")
-        task.wait(0.1)
-        if lastDeathPosition then
-            hrp.CFrame = lastDeathPosition
-        end
-    end
-end)
 
 MiscTab:Toggle({
     Title = "Arrest Aura",
@@ -115,126 +58,127 @@ MiscTab:Toggle({
     end
 })
 
-LP.CharacterAdded:Connect(function(char)
-    if antiDeath then
-        task.wait(0.1)
-        local hrp = char:WaitForChild("HumanoidRootPart")
-        if lastPosition then
-            hrp.CFrame = lastPosition
+-- HUMANOID CONTROLE
+local function setupHumanoid(char)
+    playerHumanoid = char:WaitForChild("Humanoid")
+
+    playerHumanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if antiTaze then
+            playerHumanoid.WalkSpeed = 16
         end
-        local hum = char:WaitForChild("Humanoid")
+    end)
+
+    playerHumanoid.Died:Connect(function()
+        if antiDeath then
+            local hrp = char:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                lastDeathPosition = hrp.CFrame
+            end
+        end
+    end)
+end
+
+if LP.Character then
+    setupHumanoid(LP.Character)
+end
+
+LP.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    setupHumanoid(char)
+
+    if antiDeath and lastDeathPosition then
+        local hrp = char:WaitForChild("HumanoidRootPart")
+        hrp.CFrame = lastDeathPosition
+    end
+end)
+
+-- AUTO COLETAR
+local itemsToCollect = {"Key card", "M9"}
+
+RunService.RenderStepped:Connect(function()
+    if not autoCollect then return end
+    if not LP.Character then return end
+
+    local root = LP.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+
+    for _, itemName in ipairs(itemsToCollect) do
+        local item = workspace:FindFirstChild(itemName)
+        if item then
+            local pos = item:IsA("Model") and item.PrimaryPart and item.PrimaryPart.Position or item.Position
+            if (root.Position - pos).Magnitude <= 10 then
+                Rep.Remotes.GiverPressed:FireServer(item)
+            end
+        end
+    end
+end)
+
+-- CURA E POSIÇÃO
+RunService.Heartbeat:Connect(function()
+    if not LP.Character then return end
+
+    local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+    local hum = LP.Character:FindFirstChild("Humanoid")
+
+    if hrp then
+        lastPosition = hrp.CFrame
+    end
+
+    if antiDeath and hum and hum.Health < hum.MaxHealth then
         hum.Health = hum.MaxHealth
     end
 end)
 
-RunService.Heartbeat:Connect(function()
-    if antiDeath and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-        lastPosition = LP.Character.HumanoidRootPart.CFrame
-        local hum = LP.Character:FindFirstChild("Humanoid")
-        if hum and hum.Health < hum.MaxHealth then
-            hum.Health = hum.MaxHealth
-        end
-    end
-end)
-
+-- AURA
 task.spawn(function()
     while task.wait(0.1) do
-        if arrestAura and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-            local closestDist = math.huge
-            local closestPlayer = nil
+        if not arrestAura then continue end
+        if not LP.Character then continue end
+        local hrp = LP.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then continue end
 
-            for _, player in pairs(Players:GetPlayers()) do
-                if player ~= LP and player.Team ~= LP.Team and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-                    local dist = (player.Character.HumanoidRootPart.Position - LP.Character.HumanoidRootPart.Position).Magnitude
-                    if dist < closestDist then
-                        closestDist = dist
-                        closestPlayer = player
-                    end
+        local closest = nil
+        local dist = math.huge
+
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p ~= LP and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local magnitude = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if magnitude < dist then
+                    dist = magnitude
+                    closest = p
                 end
             end
+        end
 
-            if closestPlayer then
-                if LP.Backpack:FindFirstChild("Handcuffs") then
-                    Rep.Remotes.ArrestPlayer:InvokeServer(closestPlayer)
-                elseif LP.Backpack:FindFirstChild("Taser") then
-                    Rep.Remotes.TasePlayer:InvokeServer(closestPlayer)
-                end
+        if closest then
+            if LP.Backpack:FindFirstChild("Handcuffs") then
+                Rep.Remotes.ArrestPlayer:InvokeServer(closest)
+            elseif LP.Backpack:FindFirstChild("Taser") then
+                Rep.Remotes.TasePlayer:InvokeServer(closest)
             end
         end
     end
 end)
 
+-- TELEPORT TAB
 local TeleportTab = Window:Tab({
     Title = "Teleport",
     Icon = "wrench"
 })
 
-TeleportTab:Button({
-    Title = "Inside Prison",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(938.409912, 117.790016, 2433.229980)))
+local function tp(v)
+    if LP.Character then
+        LP.Character:PivotTo(CFrame.new(v))
     end
-})
+end
 
-TeleportTab:Button({
-    Title = "Police Room",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(804.596680, 108.589279, 2247.290283)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Police Room 2",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(792.720947, 100.984299, 2237.962891)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Secret Place",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(717.111328, 100.189995, 2333.780762)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Criminal Spawn",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(-975.487305, 108.323685, 2061.795166)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Cafeteria",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(956.123169, 99.989952, 2320.714355)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Yard",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(745.734314, 97.999939, 2526.635254)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "On Top Of Roof",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(914.443726, 139.641037, 2290.872803)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Guard Tower Left",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(823.181946, 125.839996, 2071.674805)))
-    end
-})
-
-TeleportTab:Button({
-    Title = "Guard Tower Right",
-    Callback = function()
-        game.Players.LocalPlayer.Character:PivotTo(CFrame.new(Vector3.new(822.916504, 125.839996, 2588.562744)))
-    end
-})
+TeleportTab:Button({Title = "Inside Prison", Callback = function() tp(Vector3.new(938.409912,117.790016,2433.229980)) end})
+TeleportTab:Button({Title = "Police Room", Callback = function() tp(Vector3.new(804.596680,108.589279,2247.290283)) end})
+TeleportTab:Button({Title = "Police Room 2", Callback = function() tp(Vector3.new(792.720947,100.984299,2237.962891)) end})
+TeleportTab:Button({Title = "Secret Place", Callback = function() tp(Vector3.new(717.111328,100.189995,2333.780762)) end})
+TeleportTab:Button({Title = "Criminal Spawn", Callback = function() tp(Vector3.new(-975.487305,108.323685,2061.795166)) end})
+TeleportTab:Button({Title = "Cafeteria", Callback = function() tp(Vector3.new(956.123169,99.989952,2320.714355)) end})
+TeleportTab:Button({Title = "Yard", Callback = function() tp(Vector3.new(745.734314,97.999939,2526.635254)) end})
+TeleportTab:Button({Title = "On Top Of Roof", Callback = function() tp(Vector3.new(914.443726,139.641037,2290.872803)) end})
+TeleportTab:Button({Title = "Guard Tower Left", Callback = function() tp(Vector3.new(823.181946,125.839996,2071.674805)) end})
+TeleportTab:Button({Title = "Guard Tower Right", Callback = function() tp(Vector3.new(822.916504,125.839996,2588.562744)) end})
